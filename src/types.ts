@@ -88,3 +88,73 @@ export interface FirestoreErrorInfo {
     }[];
   };
 }
+
+// ==========================================
+// RBAC & Administrative Types
+// ==========================================
+export type UserRole = 'superadmin' | 'admin' | 'user';
+
+export interface AdminProfile {
+  uid: string;
+  email: string;
+  role: UserRole;
+  grantedAt: string;
+}
+
+export interface AdminAuditLog {
+  id: string;
+  eventType: string;
+  severity: 'INFO' | 'WARNING' | 'CRITICAL';
+  actorUid: string;
+  actorEmail?: string;
+  details: string;
+  timestamp: string;
+}
+
+// ==========================================
+// External Notification Types
+// ==========================================
+export type NotificationTriggerReason =
+  | 'GOAL_SETTING'
+  | 'DECISION_MAKING'
+  | 'CRISIS_SAFE_MODE'
+  | 'KEY_INSIGHTS_EXTRACTED'
+  | 'MANUAL_TEST';
+
+export interface NotificationConfig {
+  slackEnabled: boolean;
+  slackWebhookUrl?: string;
+  discordEnabled: boolean;
+  discordWebhookUrl?: string;
+  emailEnabled: boolean;
+  emailEndpoint?: string;
+  triggerCategories: JournalCategory[];
+  notifyOnCrisis: boolean;
+  notifyOnKeyInsights: boolean;
+  updatedAt: string;
+}
+
+export interface NotificationDispatchPayload {
+  entryId: string;
+  triggerReason: NotificationTriggerReason;
+  entryTitle: string;
+  category: JournalCategory;
+  mood?: string | null;
+  summary?: string;
+  keyInsights?: string[];
+  timestamp: string;
+  channels?: ('slack' | 'discord' | 'email')[];
+}
+
+export interface NotificationDispatchResult {
+  success: boolean;
+  dispatchedAt: string;
+  triggerReason: NotificationTriggerReason;
+  channels: {
+    slack?: { success: boolean; status?: number; error?: string };
+    discord?: { success: boolean; status?: number; error?: string };
+    email?: { success: boolean; status?: number; error?: string };
+  };
+  dlpSanitized: boolean;
+}
+

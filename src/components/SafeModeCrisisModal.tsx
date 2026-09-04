@@ -9,13 +9,30 @@ interface SafeModeCrisisModalProps {
 
 export function SafeModeCrisisModal({ isOpen, onClose, triggerPhrase }: SafeModeCrisisModalProps) {
   useEffect(() => {
-    if (isOpen && typeof window !== 'undefined' && window.speechSynthesis) {
-      // Gentle reassuring voice notification
-      const utterance = new SpeechSynthesisUtterance(
-        "You are safe right now. Please reach out to someone who cares about you. Help is available 24/7."
-      );
-      utterance.rate = 0.9;
-      window.speechSynthesis.speak(utterance);
+    if (isOpen) {
+      if (typeof window !== 'undefined' && window.speechSynthesis) {
+        // Gentle reassuring voice notification
+        const utterance = new SpeechSynthesisUtterance(
+          "You are safe right now. Please reach out to someone who cares about you. Help is available 24/7."
+        );
+        utterance.rate = 0.9;
+        window.speechSynthesis.speak(utterance);
+      }
+
+      // Dispatch high-priority crisis notification to external channels (Slack/Discord/Email)
+      fetch('/api/notifications/dispatch', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          entryId: `crisis-${Date.now()}`,
+          triggerReason: 'CRISIS_SAFE_MODE',
+          entryTitle: 'Distress Safe Mode Protocol Activated',
+          category: 'Personal Reflection',
+          summary: 'A user triggered the Safe Mode emergency safeguard in the ReflectAI interface. 24/7 crisis lifelines (988 and Crisis Text Line) were presented.',
+          timestamp: new Date().toISOString(),
+          channels: ['slack', 'discord', 'email'],
+        }),
+      }).catch((e) => console.warn('Safe mode external notification dispatch:', e));
     }
   }, [isOpen]);
 

@@ -66,12 +66,134 @@
         }
       },
       "required": ["id", "userId", "title", "messages", "createdAt", "updatedAt"]
+    },
+    "AdminProfile": {
+      "title": "AdminProfile",
+      "description": "Administrative role definition and elevated privilege record",
+      "type": "object",
+      "properties": {
+        "uid": {
+          "type": "string",
+          "description": "Firebase Auth UID of the administrator"
+        },
+        "email": {
+          "type": "string",
+          "description": "Verified email address of the administrator"
+        },
+        "role": {
+          "type": "string",
+          "description": "Role designation within the RBAC system",
+          "enum": ["admin", "superadmin"]
+        },
+        "grantedAt": {
+          "type": "string",
+          "description": "ISO timestamp of role assignment"
+        }
+      },
+      "required": ["uid", "email", "role", "grantedAt"]
+    },
+    "NotificationConfig": {
+      "title": "NotificationConfig",
+      "description": "System-wide and user external notification webhook settings",
+      "type": "object",
+      "properties": {
+        "slackEnabled": {
+          "type": "boolean",
+          "description": "Whether Slack webhook notifications are enabled"
+        },
+        "slackWebhookUrl": {
+          "type": "string",
+          "description": "Slack incoming webhook URL (HTTPS)"
+        },
+        "discordEnabled": {
+          "type": "boolean",
+          "description": "Whether Discord webhook notifications are enabled"
+        },
+        "discordWebhookUrl": {
+          "type": "string",
+          "description": "Discord incoming webhook URL (HTTPS)"
+        },
+        "emailEnabled": {
+          "type": "boolean",
+          "description": "Whether email dispatch notifications are enabled"
+        },
+        "emailEndpoint": {
+          "type": "string",
+          "description": "Email dispatch endpoint or alert address"
+        },
+        "triggerCategories": {
+          "type": "array",
+          "description": "Journal categories that trigger automated external alerts"
+        },
+        "notifyOnCrisis": {
+          "type": "boolean",
+          "description": "Whether distress safe mode activations trigger high-priority alerts"
+        },
+        "notifyOnKeyInsights": {
+          "type": "boolean",
+          "description": "Whether extracted key insights trigger external notifications"
+        },
+        "updatedAt": {
+          "type": "string",
+          "description": "ISO timestamp of last configuration update"
+        }
+      },
+      "required": ["slackEnabled", "discordEnabled", "emailEnabled", "updatedAt"]
+    },
+    "AdminAuditLog": {
+      "title": "AdminAuditLog",
+      "description": "Immutable security and administrative audit event record",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier of the audit log event"
+        },
+        "eventType": {
+          "type": "string",
+          "description": "Categorized administrative or security event type"
+        },
+        "severity": {
+          "type": "string",
+          "description": "Event severity tier",
+          "enum": ["INFO", "WARNING", "CRITICAL"]
+        },
+        "actorUid": {
+          "type": "string",
+          "description": "UID of the user or system component initiating the action"
+        },
+        "actorEmail": {
+          "type": "string",
+          "description": "Email of the actor if authenticated"
+        },
+        "details": {
+          "type": "string",
+          "description": "Sanitized event summary and details"
+        },
+        "timestamp": {
+          "type": "string",
+          "description": "ISO timestamp when the audit event occurred"
+        }
+      },
+      "required": ["id", "eventType", "severity", "details", "timestamp"]
     }
   },
   "firestore": {
     "/users/{userId}/interactions/{interactionId}": {
       "schema": "Interaction",
       "description": "User-isolated reflections, journal entries, and multi-turn conversations with Gemini"
+    },
+    "/admins/{adminId}": {
+      "schema": "AdminProfile",
+      "description": "System administrator identity and role assignment records"
+    },
+    "/system/notifications": {
+      "schema": "NotificationConfig",
+      "description": "System-wide notification rules and external webhook routing configurations"
+    },
+    "/admin_audit_logs/{logId}": {
+      "schema": "AdminAuditLog",
+      "description": "Immutable administrative and security audit trail events"
     }
   }
 }

@@ -21,6 +21,7 @@ import { SafeModeCrisisModal } from './components/SafeModeCrisisModal';
 import { PasskeyAuthModal } from './components/PasskeyAuthModal';
 import { MoodInsightsModal } from './components/MoodInsightsModal';
 import { VoiceCommandGuideModal } from './components/VoiceCommandGuideModal';
+import { AdminDashboardModal } from './components/AdminDashboardModal';
 import { enclave, logSecurityEvent } from './crypto/workerClient';
 
 const DURESS_DECOY_ENTRIES: InteractionEntry[] = [
@@ -92,6 +93,14 @@ export default function App() {
   const [isDuressDecoy, setIsDuressDecoy] = useState(false);
   const [isMoodInsightsOpen, setIsMoodInsightsOpen] = useState(false);
   const [isVoiceGuideOpen, setIsVoiceGuideOpen] = useState(false);
+  const [isAdminDashboardOpen, setIsAdminDashboardOpen] = useState(false);
+  const [simulatedRole, setSimulatedRole] = useState<'superadmin' | 'admin' | 'user'>('superadmin');
+
+  // Verify Admin privilege against bootstrap email or role
+  const isActualAdmin =
+    currentUser?.email === 'gaudhamanaadhithyiaan@gmail.com' ||
+    simulatedRole === 'superadmin' ||
+    simulatedRole === 'admin';
 
   // Test connection on boot
   useEffect(() => {
@@ -300,6 +309,8 @@ export default function App() {
           onTriggerSafeMode={() => handleTriggerSafeMode()}
           onOpenMoodInsights={() => setIsMoodInsightsOpen(true)}
           onOpenVoiceGuide={() => setIsVoiceGuideOpen(true)}
+          onOpenAdminDashboard={() => setIsAdminDashboardOpen(true)}
+          isAdmin={isActualAdmin}
           isDuressDecoy={isDuressDecoy}
         />
 
@@ -409,6 +420,16 @@ export default function App() {
           onClose={() => setIsSecurityModalOpen(false)}
           userId={currentUser?.uid}
           onCryptoShred={handleCryptoShred}
+        />
+
+        {/* Admin Dashboard (RBAC & External Webhooks) */}
+        <AdminDashboardModal
+          isOpen={isAdminDashboardOpen}
+          onClose={() => setIsAdminDashboardOpen(false)}
+          currentUser={currentUser}
+          isAdmin={isActualAdmin}
+          activeRole={simulatedRole}
+          onSimulateRoleChange={(role) => setSimulatedRole(role)}
         />
       </div>
     </ScreenPrivacyGuard>

@@ -3,6 +3,7 @@ import { User } from 'firebase/auth';
 import {
   Sparkles,
   ShieldCheck,
+  Shield,
   LogOut,
   Mic,
   Fingerprint,
@@ -20,6 +21,8 @@ interface NavbarProps {
   onTriggerSafeMode?: () => void;
   onOpenMoodInsights?: () => void;
   onOpenVoiceGuide?: () => void;
+  onOpenAdminDashboard?: () => void;
+  isAdmin?: boolean;
   isDuressDecoy?: boolean;
 }
 
@@ -32,6 +35,8 @@ export const Navbar: React.FC<NavbarProps> = ({
   onTriggerSafeMode,
   onOpenMoodInsights,
   onOpenVoiceGuide,
+  onOpenAdminDashboard,
+  isAdmin = true,
   isDuressDecoy,
 }) => {
   return (
@@ -128,6 +133,25 @@ export const Navbar: React.FC<NavbarProps> = ({
               title="Safe Mode Assistance & Crisis Lifeline"
             >
               <HeartHandshake className="w-4 h-4" />
+            </button>
+          )}
+
+          {/* Admin Dashboard (RBAC & Notifications) */}
+          {onOpenAdminDashboard && (
+            <button
+              id="navbar-admin-dashboard-button"
+              type="button"
+              onClick={onOpenAdminDashboard}
+              className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-xl text-xs font-semibold text-indigo-900 bg-indigo-50 border border-indigo-200 hover:bg-indigo-100 hover:border-indigo-300 transition-colors shadow-2xs"
+              title="Admin Dashboard: Role-Based Access Control, Webhooks & Telemetry"
+            >
+              <Shield className="w-4 h-4 text-indigo-600" />
+              <span className="hidden sm:inline">Admin</span>
+              {isAdmin && (
+                <span className="text-[10px] bg-indigo-200/80 text-indigo-900 px-1 py-0.5 rounded font-mono font-bold leading-none">
+                  RBAC
+                </span>
+              )}
             </button>
           )}
 

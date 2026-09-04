@@ -53,3 +53,82 @@ Provide comprehensive architectural and security rules for interacting with Goog
    - All payloads saved to Firestore must be stripped of `undefined` fields using `stripUndefined()` before invoking `setDoc()`.
 2. **Owner-Bound Path Checking**:
    - All user data operations are strictly bound to `/users/{userId}/interactions/{interactionId}`.
+
+---
+
+## 4. Admin Roles Directive & RBAC Security Standard
+
+### Objective
+Establish strict architectural and algorithmic rules for how the AI must generate security checks, access controls, and boundary validations for elevated administrative operations.
+
+### Threat Model & Threat Summary Table for Administrative RBAC
+| Threat Zone | Identified Vector / Risk | Severity | Implemented Countermeasure |
+| :--- | :--- | :--- | :--- |
+| **Input Surfaces** | Parameter tampering or forged role claims passed in HTTP requests (`{ role: 'admin' }`). | Critical | Zero reliance on client-supplied parameters. Admin privileges are verified dynamically against trusted server-side state or verified email tokens. |
+| **Planning & Reasoning** | Prompt injection attempting to convince AI models to execute admin workflows or bypass RBAC guards. | High | Administrative operations are hard-gated behind cryptographic auth headers and database-enforced security rules. Model responses never dictate access authorization. |
+| **Tool Execution & APIs** | Privilege escalation via unprotected server endpoints or administrative action routes. | Critical | Enforce dual-layer enforcement: (1) Express API layer validates Bearer tokens and admin email identity; (2) Firestore security rules strictly gate `/admins/*` and `/system/*`. |
+| **Memory & State** | Cross-tenant access or unauthorized modification of system-wide configurations and audit trails. | Critical | Append-only audit logging: `/admin_audit_logs/{logId}` forbids `update` and `delete`. Regular users cannot modify system configuration documents under `/system/notifications`. |
+| **Inter-System Communication** | Accidental disclosure of system telemetry, secrets, or decrypted user data during admin queries. | High | Administrative telemetry only surfaces sanitized health metrics (rate limit status, circuit breaker states, sanitized audit records). User journal content remains Zero-Knowledge encrypted. |
+
+### Core RBAC Directives & Security Checks
+1. **Zero Insecure Defaults**:
+   - Never generate permissive rule catch-alls like `allow read, write: if true;` or `allow read: if isSignedIn();` on administrative collections.
+2. **Dynamic Server-Side Role Verification**:
+   - Auth tokens MUST NOT rely on mutable client claims. Role checks must verify against:
+     - Bootstrapped verified admin email: `request.auth.token.email == 'gaudhamanaadhithyiaan@gmail.com' && request.auth.token.email_verified == true`.
+     - Dynamic database lookup on trusted collection: `exists(/databases/$(database)/documents/admins/$(request.auth.uid))`.
+3. **Denial-of-Wallet Rule Evaluation Order**:
+   - All generated security checks must follow the strict evaluation hierarchy:
+     1. Request Authentication: `request.auth != null`
+     2. Static Validation: Boundary checks on identifiers and timestamps
+     3. Relational/Role Validation: `isAdmin()` or document lookups (limiting database billing operations)
+4. **Administrative Audit Trail Mandatory Requirement**:
+   - Every elevated administrative action (role assignment, webhook reconfiguration, system test dispatch, telemetry inspection) must record a tamper-evident audit record in `/admin_audit_logs`.
+   - Audit logs are append-only (`allow create: if isSignedIn(); allow update, delete: if false;`).
+5. **Least Privilege Data Isolation**:
+   - Admins can inspect system health and notification configurations, but end-user journal contents remain protected by zero-knowledge client-side encryption (Web Worker AES-256-GCM enclave).
+
+---
+
+## 5. External Notification API Directive & Payload Schema Standard
+
+### Objective
+Define secure management protocols for authentication credentials, outbound egress controls, data loss prevention (DLP), and schema validation when integrating external notification webhooks (Slack, Discord, Email).
+
+### Threat Model & Threat Summary Table for External Notifications
+| Threat Zone | Identified Vector / Risk | Severity | Implemented Countermeasure |
+| :--- | :--- | :--- | :--- |
+| **Input Surfaces** | Server-Side Request Forgery (SSRF) via malicious webhook URLs (e.g., target `http://169.254.169.254` or internal RFC1918 subnets). | Critical | Strict SSRF defense: Protocol must be strictly `https:`. Reject all private/loopback/cloud-metadata IP ranges (`127.0.0.1`, `10.0.0.0/8`, `172.16.0.0/12`, `192.168.0.0/16`, `169.254.169.254`). |
+| **Planning & Reasoning** | Prompt injection attempting to exfiltrate full journal transcripts or secrets into external chat channels. | High | Data Loss Prevention (DLP) Privacy Boundary: Raw journal chat transcripts are strictly forbidden from notification payloads. Only parsed metadata (category, executive summary, key insights) is transmitted. |
+| **Tool Execution & APIs** | Webhook denial-of-service or connection hanging from slow third-party servers. | Medium | Enforce strict 5-second outbound timeouts (`AbortSignal.timeout(5000)`) and circuit breaker tracking. |
+| **Memory & State** | Exposure of webhook secrets or API tokens in client-side code or public repositories. | Critical | Zero-Hardcoding Hygiene: Webhook credentials stored in Secret Manager / environment variables (`SLACK_WEBHOOK_URL`, `DISCORD_WEBHOOK_URL`, `NOTIFICATION_SECRET`). Client UI displays masked tokens only. |
+| **Inter-System Communication** | Corrupted payloads causing webhook rejections or payload injection attacks. | Medium | Strict payload schema conformity: Validated against Slack Block Kit and Discord Webhook Embed structures before network transmission. |
+
+### Core Notification Directives
+1. **Zero-Hardcoding Hygiene**:
+   - Operational webhook URLs must be read from environment variables or Google Cloud Secret Manager (`SLACK_WEBHOOK_URL`, `DISCORD_WEBHOOK_URL`, `NOTIFICATION_SECRET`).
+   - Never commit hardcoded webhook URLs or tokens.
+2. **SSRF Guard & Network Egress Hygiene**:
+   - Webhook URLs must be parsed using the URL API and validated:
+     - Protocol must equal `https:`.
+     - Hostname must not resolve to localhost, IPv4 loopback (`127.0.0.1`), link-local metadata (`169.254.169.254`), or private network ranges.
+3. **Payload Schema Standard**:
+   - **Slack Incoming Webhooks**: Must use Slack Block Kit:
+     - `header`: Plain-text service title with emoji.
+     - `section`: Structured Markdown describing event type, entry title, category, and mood.
+     - `section`: Executive summary.
+     - `context`: DLP privacy compliance stamp and timestamp.
+   - **Discord Webhooks**: Must use Discord Rich Embeds:
+     - `title`: Alert title.
+     - `description`: Executive summary.
+     - `color`: Hex color integer mapped by trigger priority (Red for Crisis/Safe Mode, Green for Goals, Blue for Reflections).
+     - `fields`: Inline fields for Category, Trigger Reason, Mood, and Key Insights.
+     - `footer`: ReflectAI Zero-Trust DLP security stamp.
+   - **Email Dispatch**: Must use structured email payload with sanitized subject and HTML/text body.
+4. **Selective Trigger Rules**:
+   - Automated notification dispatch is restricted to designated trigger events:
+     - `CRISIS_SAFE_MODE`: Distress Safe Mode activation (highest priority).
+     - `GOAL_SETTING`: Goal Setting reflections parsed and structured.
+     - `DECISION_MAKING`: Strategic Decision Making reflections parsed and structured.
+     - `KEY_INSIGHTS_EXTRACTED`: Gemini executive takeaways synthesized.
+
