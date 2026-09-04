@@ -1,0 +1,6 @@
+{
+  "name": "Gemini Reflections & Journal",
+  "description": "A user-authenticated journaling web application using Gemini 3.6 Flash, Cloud Firestore with strict user isolation, and Location-Aware Google Maps integration.",
+  "requestFramePermissions": ["geolocation", "microphone"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

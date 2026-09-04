@@ -1,0 +1,77 @@
+{
+  "entities": {
+    "Interaction": {
+      "title": "Interaction",
+      "description": "User journal entry or multi-turn reflection session with Gemini",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier of the interaction session"
+        },
+        "userId": {
+          "type": "string",
+          "description": "Firebase Auth UID of the owner"
+        },
+        "title": {
+          "type": "string",
+          "description": "Title of the reflection journal entry",
+          "maxLength": 200
+        },
+        "category": {
+          "type": "string",
+          "description": "Category tag for the journal entry",
+          "enum": ["Personal Reflection", "Brainstorming", "Gratitude", "Decision Making", "Goal Setting", "General"]
+        },
+        "mode": {
+          "type": "string",
+          "description": "AI assistance mode used in this session",
+          "enum": ["reflection", "summary", "brainstorm", "socratic"]
+        },
+        "mood": {
+          "type": "string",
+          "description": "Optional mood emoji tag describing emotional state of the entry"
+        },
+        "location": {
+          "type": "object",
+          "description": "Optional pinned Google Maps geographical location attached to the journal entry",
+          "properties": {
+            "name": { "type": "string" },
+            "formattedAddress": { "type": "string" },
+            "lat": { "type": "number" },
+            "lng": { "type": "number" },
+            "placeId": { "type": "string" }
+          }
+        },
+        "summary": {
+          "type": "string",
+          "description": "Concise AI-generated summary of the reflection",
+          "maxLength": 2000
+        },
+        "keyInsights": {
+          "type": "array",
+          "description": "Key takeaways extracted from the interaction"
+        },
+        "messages": {
+          "type": "array",
+          "description": "Ordered multi-turn conversational transcript"
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "ISO timestamp of creation"
+        },
+        "updatedAt": {
+          "type": "string",
+          "description": "ISO timestamp of last update"
+        }
+      },
+      "required": ["id", "userId", "title", "messages", "createdAt", "updatedAt"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}/interactions/{interactionId}": {
+      "schema": "Interaction",
+      "description": "User-isolated reflections, journal entries, and multi-turn conversations with Gemini"
+    }
+  }
+}
