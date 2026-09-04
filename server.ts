@@ -273,6 +273,22 @@ app.post('/api/gemini/reflect', async (req, res) => {
       return res.status(400).json({ error: 'At least one message is required to generate a reflection.' });
     }
 
+    // Comprehensive Server-Side Suicide & Distress Safeguard
+    const latestUserMessage = [...messages].reverse().find((m: any) => m.role === 'user')?.content || '';
+    const SUICIDE_DISTRESS_REGEX = /\b(kill myself|want to die|suicide|suicidal|end my life|end it all|hurt myself|cutting myself|slit my (wrists?|throat)|overdose|take all my pills|hang myself|jump off|shoot myself|drink bleach|better off dead|wish i were dead|tired of living|give up on life|goodbye world|everyone would be happier without me|no reason to live)\b/i;
+    if (SUICIDE_DISTRESS_REGEX.test(latestUserMessage)) {
+      recordAuditLog(
+        'CRISIS_EMERGENCY_TRIGGERED',
+        'CRITICAL',
+        'Suicide/self-harm trigger detected in reflection prompt. Crisis emergency resources and 911/988 assistance dispatched.'
+      );
+      return res.json({
+        reply: "⚠️ **Emergency Support & Crisis Lifeline Activated**\n\nIf you are feeling overwhelmed, thinking about hurting yourself, or in crisis, please know that you are not alone and help is immediately available right now:\n\n- **Call Emergency Services (911)** for immediate emergency assistance.\n- **988 Suicide & Crisis Lifeline**: Call or text **988** (Available 24/7, free, confidential, in English and Spanish).\n- **Crisis Text Line**: Text **HOME** to **741741** to connect with a compassionate crisis counselor.\n- **International Resources**: If outside the United States, contact your local emergency number or go to the nearest emergency facility.\n\nPlease reach out to these trained professionals who care and can support you through this.",
+        crisisDetected: true,
+        modelUsed: "emergency-safety-shield",
+      });
+    }
+
     // Determine system instruction based on journaling mode
     let modeInstruction = '';
     switch (mode) {

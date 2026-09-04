@@ -23,7 +23,8 @@ export interface SecurityAuditEvent {
     | 'DLP_REDACTION_APPLIED'
     | 'CRYPTO_SHRED_EXECUTED'
     | 'MOOD_UPDATED_VIA_VOICE'
-    | 'VOICE_COMMAND_EXECUTED';
+    | 'VOICE_COMMAND_EXECUTED'
+    | 'DATA_SOVEREIGNTY_BACKUP_EXPORTED';
   severity: 'INFO' | 'WARNING' | 'CRITICAL';
   details: string;
 }

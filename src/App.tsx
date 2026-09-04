@@ -419,6 +419,7 @@ export default function App() {
           isOpen={isSecurityModalOpen}
           onClose={() => setIsSecurityModalOpen(false)}
           userId={currentUser?.uid}
+          entries={entries}
           onCryptoShred={handleCryptoShred}
         />
 

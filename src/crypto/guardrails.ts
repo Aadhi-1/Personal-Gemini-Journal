@@ -4,17 +4,19 @@
 
 import { logSecurityEvent } from './workerClient';
 
-// Harm & Severe Distress Indicators (Self-Harm, Crisis, Physical Abuse)
+// Harm & Severe Distress Indicators (Self-Harm, Crisis, Suicide, Physical Abuse)
 const SEVERE_DISTRESS_PATTERNS = [
-  /\b(kill myself|want to die|suicide|end my life|end it all|hurt myself|cutting myself)\b/i,
-  /\b(no reason to live|better off dead|wish i were dead|can't go on anymore)\b/i,
-  /\b(being beaten|hitting me|hurting me physically|abusing me|scared of being attacked)\b/i,
+  /\b(kill myself|want to die|suicide|suicidal|end my life|end it all|hurt myself|cutting myself|slit my (wrists?|throat)|overdose|take all my pills|hang myself|jump off a (bridge|roof|building)|shoot myself|drink bleach|swallow poison)\b/i,
+  /\b(no reason to live|better off dead|wish i were dead|can't go on anymore|tired of being alive|tired of living|don't want to wake up|goodbye world|saying goodbye forever|my final note|leaving this world|everyone would be happier without me|nobody would miss me|ready to die)\b/i,
+  /\b(do something (bad|wrong|drastic|terrible) to myself|harming myself|punish myself physically|bleeding myself|burn myself)\b/i,
+  /\b(being beaten|hitting me|hurting me physically|abusing me|scared of being attacked|domestic violence)\b/i,
 ];
 
 export interface DistressAnalysisResult {
   isDistressDetected: boolean;
   triggerPhrase?: string;
   recommendedAction: 'NORMAL' | 'ACTIVATE_SAFE_MODE';
+  isEmergencyCallRequired?: boolean;
 }
 
 /**
@@ -37,6 +39,7 @@ export function analyzeDistressOnDevice(transcript: string): DistressAnalysisRes
         isDistressDetected: true,
         triggerPhrase: match[0],
         recommendedAction: 'ACTIVATE_SAFE_MODE',
+        isEmergencyCallRequired: true,
       };
     }
   }
