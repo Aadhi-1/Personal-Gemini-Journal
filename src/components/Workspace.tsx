@@ -1752,46 +1752,54 @@ export const Workspace: React.FC<WorkspaceProps> = ({
         }}
       >
         <div className="max-w-3xl mx-auto">
-          {/* Staged Attachments Tray */}
-          {stagedAttachments.length > 0 && (
-            <div className="flex items-center gap-2 mb-2 p-2 rounded-xl bg-stone-100/90 border border-stone-200/90 overflow-x-auto">
-              <span className="text-[11px] font-semibold text-stone-500 shrink-0 ml-1">Attached:</span>
-              {stagedAttachments.map((att, idx) => (
-                <div
-                  key={att.id || idx}
-                  className="relative inline-flex items-center gap-2 pl-1.5 pr-2 py-1 rounded-lg bg-white border border-stone-300 shadow-2xs shrink-0"
-                >
-                  <img
-                    src={att.url}
-                    alt={att.title || 'Attachment'}
-                    referrerPolicy="no-referrer"
-                    className="w-7 h-7 rounded object-cover cursor-pointer"
-                    onClick={() => setLightboxMedia(att)}
-                  />
-                  <div className="flex flex-col text-left text-[10px] leading-tight">
-                    <span className="font-semibold text-stone-800 max-w-[100px] truncate">
-                      {att.title || (att.type === 'gif' ? 'GIF' : 'Photo')}
-                    </span>
-                    <span className="text-stone-400 capitalize">{att.type}</span>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => handleRemoveStagedAttachment(idx)}
-                    className="p-1 text-stone-400 hover:text-red-600 rounded transition-colors"
-                    title="Remove attachment"
+          {/* Unified Chat Input Container */}
+          <div
+            className="rounded-2xl border transition-all focus-within:ring-2 focus-within:ring-amber-500/30 p-2.5 sm:p-3 flex flex-col shadow-xs"
+            style={{
+              backgroundColor: currentTheme.bgMain,
+              borderColor: currentTheme.borderColor,
+            }}
+          >
+            {/* Staged Attachments Tray inside chat box */}
+            {stagedAttachments.length > 0 && (
+              <div className="flex items-center gap-2 mb-2 p-2 rounded-xl bg-stone-100/90 dark:bg-stone-800/60 border border-stone-200/80 dark:border-stone-700/60 overflow-x-auto">
+                <span className="text-[11px] font-semibold text-stone-500 shrink-0 ml-1">Attached:</span>
+                {stagedAttachments.map((att, idx) => (
+                  <div
+                    key={att.id || idx}
+                    className="relative inline-flex items-center gap-2 pl-1.5 pr-2 py-1 rounded-lg bg-white dark:bg-stone-900 border border-stone-300 dark:border-stone-700 shadow-2xs shrink-0"
                   >
-                    <X className="w-3 h-3" />
-                  </button>
-                </div>
-              ))}
-            </div>
-          )}
+                    <img
+                      src={att.url}
+                      alt={att.title || 'Attachment'}
+                      referrerPolicy="no-referrer"
+                      className="w-7 h-7 rounded object-cover cursor-pointer hover:opacity-90"
+                      onClick={() => setLightboxMedia(att)}
+                    />
+                    <div className="flex flex-col text-left text-[10px] leading-tight">
+                      <span className="font-semibold text-stone-800 dark:text-stone-200 max-w-[90px] sm:max-w-[120px] truncate">
+                        {att.title || (att.type === 'gif' ? 'GIF' : 'Photo')}
+                      </span>
+                      <span className="text-stone-400 capitalize">{att.type}</span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveStagedAttachment(idx)}
+                      className="p-1 text-stone-400 hover:text-red-600 rounded transition-colors"
+                      title="Remove attachment"
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
 
-          <div className="relative">
+            {/* Seamless Textarea */}
             <textarea
               id="journal-prompt-textarea"
               ref={textareaRef}
-              rows={3}
+              rows={2}
               value={inputText}
               onChange={(e) => setInputText(e.target.value)}
               onKeyDown={(e) => {
@@ -1801,102 +1809,106 @@ export const Workspace: React.FC<WorkspaceProps> = ({
                 }
               }}
               placeholder="Write your journal reflection or response (Press ⌘ + Enter to send)..."
-              className="w-full pl-4 pr-12 py-3 text-sm rounded-xl border placeholder-stone-400 focus:outline-none focus:ring-2 resize-none shadow-xs"
+              className="w-full px-2 py-1 text-sm bg-transparent border-0 focus:outline-none focus:ring-0 resize-none placeholder-stone-400"
               style={{
-                backgroundColor: currentTheme.bgMain,
-                borderColor: currentTheme.borderColor,
                 color: currentTheme.textMain,
               }}
             />
 
-            <div className="absolute right-3 bottom-3 flex items-center gap-1.5">
-              {onOpenJarvisVoice && (
+            {/* Bottom Controls Bar ALL INSIDE THE CHAT */}
+            <div className="flex items-center justify-between gap-1.5 pt-2 border-t border-stone-200/60 dark:border-stone-800/60 mt-1">
+              {/* Left Action Tools: Photo/GIF, Gemini Tools, Google Grounding */}
+              <div className="flex items-center gap-1 sm:gap-1.5 flex-wrap">
+                {/* Attach Photo / GIF button */}
                 <button
-                  id="mic-voice-button"
+                  id="prompt-attach-media-btn"
                   type="button"
-                  onClick={onOpenJarvisVoice}
-                  className="p-2 rounded-lg border transition-all shadow-xs cursor-pointer active:scale-95"
-                  style={{
-                    borderColor: currentTheme.borderColor,
-                    backgroundColor: `${ACCENT_COLORS[accentColorId].hex}15`,
-                    color: ACCENT_COLORS[accentColorId].hex,
+                  onClick={() => {
+                    setMediaPickerMode('prompt');
+                    setIsMediaModalOpen(true);
                   }}
-                  title="Speak (Hands-Free Ambient Voice)"
+                  className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium border transition-all cursor-pointer ${
+                    stagedAttachments.length > 0
+                      ? 'bg-indigo-50 dark:bg-indigo-950/50 border-indigo-300 dark:border-indigo-700 text-indigo-700 dark:text-indigo-300 shadow-2xs font-semibold'
+                      : 'bg-stone-50 hover:bg-stone-100 dark:bg-stone-800/60 dark:hover:bg-stone-800 border-stone-200 dark:border-stone-700 text-stone-700 dark:text-stone-300'
+                  }`}
+                  title="Attach Photo or GIF to this reflection prompt"
                 >
-                  <Mic className="w-4 h-4" />
+                  <ImageIcon className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
+                  <span className="hidden xs:inline sm:inline">Photo / GIF</span>
+                  {stagedAttachments.length > 0 && (
+                    <span className="px-1.5 py-0.2 rounded-full text-[10px] bg-indigo-600 text-white font-bold">
+                      {stagedAttachments.length}
+                    </span>
+                  )}
                 </button>
-              )}
 
-              <button
-                id="send-reflection-button"
-                type="button"
-                onClick={() => handleSendMessage()}
-                disabled={(!inputText.trim() && stagedAttachments.length === 0) || isGenerating}
-                className="p-2 rounded-lg disabled:opacity-40 text-white transition-all shadow-xs cursor-pointer active:scale-95"
-                style={{
-                  backgroundColor: ACCENT_COLORS[accentColorId].hex,
-                }}
-                title="Send reflection to Gemini"
-              >
-                <Send className="w-4 h-4" />
-              </button>
-            </div>
-          </div>
+                {/* Gemini Mindful Quick Tools button */}
+                <button
+                  id="prompt-gemini-tools-btn"
+                  type="button"
+                  onClick={() => setIsGeminiToolsModalOpen(true)}
+                  className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium bg-amber-50 hover:bg-amber-100 dark:bg-amber-950/40 dark:hover:bg-amber-950/60 border border-amber-300/80 dark:border-amber-700/80 text-amber-900 dark:text-amber-200 transition-all cursor-pointer shadow-2xs"
+                  title="Launch Gemini Mindful Tools (Cognitive Reframe, Action Steps, Perspective Switcher)"
+                >
+                  <Sparkles className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
+                  <span className="hidden xs:inline sm:inline">Gemini Tools</span>
+                </button>
 
-          {/* Prompt Tool Ribbon: Photo/GIF, Google Search Grounding, Gemini Mindful Tools */}
-          <div className="flex items-center justify-between gap-2 mt-2 pt-1">
-            <div className="flex items-center gap-1.5 flex-wrap">
-              {/* Attach Photo / GIF button */}
-              <button
-                id="prompt-attach-media-btn"
-                type="button"
-                onClick={() => {
-                  setMediaPickerMode('prompt');
-                  setIsMediaModalOpen(true);
-                }}
-                className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium border transition-all cursor-pointer ${
-                  stagedAttachments.length > 0
-                    ? 'bg-indigo-50 border-indigo-300 text-indigo-700 shadow-2xs font-semibold'
-                    : 'bg-white hover:bg-stone-50 border-stone-300 text-stone-700'
-                }`}
-                title="Attach Photo or GIF to this prompt"
-              >
-                <ImageIcon className="w-3.5 h-3.5 text-indigo-600" />
-                <span>Photo / GIF</span>
-                {stagedAttachments.length > 0 && (
-                  <span className="ml-0.5 px-1.5 py-0.2 rounded-full text-[10px] bg-indigo-600 text-white font-bold">
-                    {stagedAttachments.length}
+                {/* Google Search Grounding toggle */}
+                <button
+                  id="prompt-google-grounding-btn"
+                  type="button"
+                  onClick={() => setEnableSearchGrounding((prev) => !prev)}
+                  className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium border transition-all cursor-pointer ${
+                    enableSearchGrounding
+                      ? 'bg-blue-50 dark:bg-blue-950/50 border-blue-400 dark:border-blue-600 text-blue-800 dark:text-blue-300 shadow-2xs font-semibold ring-1 ring-blue-300 dark:ring-blue-700'
+                      : 'bg-stone-50 hover:bg-stone-100 dark:bg-stone-800/60 dark:hover:bg-stone-800 border-stone-200 dark:border-stone-700 text-stone-600 dark:text-stone-400'
+                  }`}
+                  title="Ground response with live Google Search citations"
+                >
+                  <Globe className={`w-3.5 h-3.5 ${enableSearchGrounding ? 'text-blue-600 dark:text-blue-400 animate-pulse' : 'text-stone-400'}`} />
+                  <span className="hidden sm:inline">Grounding</span>
+                  <span className={`text-[10px] font-bold px-1 py-0.2 rounded ${enableSearchGrounding ? 'bg-blue-200/80 dark:bg-blue-800/80 text-blue-900 dark:text-blue-100' : 'bg-stone-200/70 dark:bg-stone-700 text-stone-600 dark:text-stone-400'}`}>
+                    {enableSearchGrounding ? 'ON' : 'OFF'}
                   </span>
+                </button>
+              </div>
+
+              {/* Right Action Tools: Voice Mic & Send Button */}
+              <div className="flex items-center gap-1 sm:gap-1.5 shrink-0">
+                {onOpenJarvisVoice && (
+                  <button
+                    id="mic-voice-button"
+                    type="button"
+                    onClick={onOpenJarvisVoice}
+                    className="p-2 rounded-xl border transition-all shadow-2xs cursor-pointer active:scale-95"
+                    style={{
+                      borderColor: currentTheme.borderColor,
+                      backgroundColor: `${ACCENT_COLORS[accentColorId].hex}15`,
+                      color: ACCENT_COLORS[accentColorId].hex,
+                    }}
+                    title="Speak (Hands-Free Ambient Voice)"
+                  >
+                    <Mic className="w-4 h-4" />
+                  </button>
                 )}
-              </button>
 
-              {/* Google Search Grounding toggle */}
-              <button
-                id="prompt-google-grounding-btn"
-                type="button"
-                onClick={() => setEnableSearchGrounding((prev) => !prev)}
-                className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium border transition-all cursor-pointer ${
-                  enableSearchGrounding
-                    ? 'bg-blue-50 border-blue-400 text-blue-800 shadow-2xs font-semibold ring-1 ring-blue-300'
-                    : 'bg-white hover:bg-stone-50 border-stone-300 text-stone-600'
-                }`}
-                title="Ground response with live Google Search citations"
-              >
-                <Globe className={`w-3.5 h-3.5 ${enableSearchGrounding ? 'text-blue-600 animate-pulse' : 'text-stone-400'}`} />
-                <span>Google Grounding {enableSearchGrounding ? 'ON' : 'OFF'}</span>
-              </button>
-
-              {/* Gemini Mindful Quick Tools button */}
-              <button
-                id="prompt-gemini-tools-btn"
-                type="button"
-                onClick={() => setIsGeminiToolsModalOpen(true)}
-                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium bg-amber-50/80 hover:bg-amber-100 border border-amber-300 text-amber-900 transition-all cursor-pointer shadow-2xs"
-                title="Launch Gemini Mindful Tools (Cognitive Reframe, Action Steps, Perspective Switcher)"
-              >
-                <Sparkles className="w-3.5 h-3.5 text-amber-600" />
-                <span>Gemini Tools</span>
-              </button>
+                <button
+                  id="send-reflection-button"
+                  type="button"
+                  onClick={() => handleSendMessage()}
+                  disabled={(!inputText.trim() && stagedAttachments.length === 0) || isGenerating}
+                  className="p-2 sm:px-3.5 sm:py-2 rounded-xl disabled:opacity-40 text-white transition-all shadow-xs cursor-pointer active:scale-95 flex items-center gap-1.5 text-xs font-semibold"
+                  style={{
+                    backgroundColor: ACCENT_COLORS[accentColorId].hex,
+                  }}
+                  title="Send reflection to Gemini (⌘ + Enter)"
+                >
+                  <Send className="w-3.5 h-3.5" />
+                  <span className="hidden md:inline">Send</span>
+                </button>
+              </div>
             </div>
           </div>
         </div>
