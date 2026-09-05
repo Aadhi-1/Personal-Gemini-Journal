@@ -10,7 +10,10 @@ import {
   HeartHandshake,
   BarChart3,
   HelpCircle,
+  Palette,
+  MessageSquareQuote,
 } from 'lucide-react';
+import { useTheme, ACCENT_COLORS } from '../theme/ThemeContext';
 
 interface NavbarProps {
   user: User | null;
@@ -22,6 +25,8 @@ interface NavbarProps {
   onOpenMoodInsights?: () => void;
   onOpenVoiceGuide?: () => void;
   onOpenAdminDashboard?: () => void;
+  onOpenThemeCustomizer?: () => void;
+  onOpenVoiceCheckIn?: () => void;
   isAdmin?: boolean;
   isDuressDecoy?: boolean;
 }
@@ -36,48 +41,106 @@ export const Navbar: React.FC<NavbarProps> = ({
   onOpenMoodInsights,
   onOpenVoiceGuide,
   onOpenAdminDashboard,
+  onOpenThemeCustomizer,
+  onOpenVoiceCheckIn,
   isAdmin = true,
   isDuressDecoy,
 }) => {
+  const { currentTheme, accentColorId, activeVoice } = useTheme();
+
   return (
     <header
       id="app-header"
-      className="border-b border-stone-200 bg-stone-50/90 backdrop-blur-md sticky top-0 z-40 select-none"
+      className="border-b sticky top-0 z-40 select-none backdrop-blur-md transition-colors"
+      style={{
+        backgroundColor: `${currentTheme.bgSurface}ee`,
+        borderColor: currentTheme.borderColor,
+        color: currentTheme.textMain,
+      }}
     >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
         {/* Brand & Logo */}
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-2xl bg-stone-900 flex items-center justify-center text-amber-300 shadow-sm">
+          <div
+            className="w-10 h-10 rounded-2xl flex items-center justify-center text-white shadow-xs transition-colors"
+            style={{ backgroundColor: ACCENT_COLORS[accentColorId].hex }}
+          >
             <Sparkles className="w-5 h-5" />
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <span className="font-bold text-stone-900 tracking-tight text-base sm:text-lg">
+              <span className="font-bold tracking-tight text-base sm:text-lg">
                 Reflections
               </span>
-              <span className="text-[11px] px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-900 font-semibold border border-amber-200">
+              <span
+                className="text-[11px] px-2.5 py-0.5 rounded-full font-semibold border"
+                style={{
+                  backgroundColor: `${ACCENT_COLORS[accentColorId].hex}20`,
+                  borderColor: `${ACCENT_COLORS[accentColorId].hex}40`,
+                  color: ACCENT_COLORS[accentColorId].hex,
+                }}
+              >
                 Zero-Knowledge VUI
               </span>
             </div>
-            <p className="text-[11px] text-stone-500 hidden sm:block">
+            <p className="text-[11px] hidden sm:block opacity-75" style={{ color: currentTheme.textMuted }}>
               Ambient Voice Interface • FIDO2 Passkeys • Military-Grade Enclave
             </p>
           </div>
         </div>
 
-        {/* Right Section: Jarvis Voice, Passkey, Insights, Security Badge & User Info */}
-        <div className="flex items-center gap-1.5 sm:gap-2.5">
+        {/* Right Section: Theme Customizer, Voice Concierge, Jarvis, Passkey, Insights, Admin */}
+        <div className="flex items-center gap-1.5 sm:gap-2">
+          {/* Voice Check-in Concierge Quick Button */}
+          {user && onOpenVoiceCheckIn && (
+            <button
+              id="open-voice-checkin-button"
+              type="button"
+              onClick={onOpenVoiceCheckIn}
+              className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-xl text-xs font-bold text-white shadow-xs active:scale-95 transition-all"
+              style={{ backgroundColor: ACCENT_COLORS[accentColorId].hex }}
+              title="Voice Check-in: Ask by voice whether to type or dictate your reflection"
+            >
+              <Mic className="w-4 h-4 animate-pulse" />
+              <span className="hidden sm:inline">Voice Check-in</span>
+            </button>
+          )}
+
+          {/* Theme & Companion Voice Personalizer Button */}
+          {onOpenThemeCustomizer && (
+            <button
+              id="open-theme-customizer-button"
+              type="button"
+              onClick={onOpenThemeCustomizer}
+              className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-xl text-xs font-semibold border shadow-2xs hover:scale-105 active:scale-95 transition-all"
+              style={{
+                borderColor: currentTheme.borderColor,
+                backgroundColor: currentTheme.bgSurface,
+                color: currentTheme.textMain,
+              }}
+              title="Personalize Themes, Colors & Multiple AI Companion Voices"
+            >
+              <Palette className="w-4 h-4" style={{ color: ACCENT_COLORS[accentColorId].hex }} />
+              <span className="hidden md:inline">{currentTheme.name}</span>
+            </button>
+          )}
+
           {/* Jarvis Ambient Voice Button */}
           {user && onOpenJarvisVoice && (
             <button
               id="open-jarvis-voice-button"
               type="button"
               onClick={onOpenJarvisVoice}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold text-stone-900 bg-amber-400 hover:bg-amber-300 transition-all shadow-xs active:scale-95"
-              title="Launch Jarvis Ambient Voice Mode (Low-Literacy & Hands-Free)"
+              className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-xl text-xs font-bold border shadow-2xs transition-all active:scale-95"
+              style={{
+                borderColor: currentTheme.borderColor,
+                backgroundColor: `${ACCENT_COLORS[accentColorId].hex}15`,
+                color: currentTheme.textMain,
+              }}
+              title={`Launch ${activeVoice.name} Voice Mode (Low-Literacy & Hands-Free)`}
             >
-              <Mic className="w-4 h-4 animate-pulse text-stone-950" />
-              <span className="hidden sm:inline">Jarvis Voice</span>
+              <MessageSquareQuote className="w-4 h-4 text-amber-500" />
+              <span className="hidden lg:inline">{activeVoice.name} Mode</span>
             </button>
           )}
 
@@ -87,11 +150,16 @@ export const Navbar: React.FC<NavbarProps> = ({
               id="open-mood-insights-button"
               type="button"
               onClick={onOpenMoodInsights}
-              className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-xl text-xs font-semibold text-stone-800 bg-white border border-stone-300 hover:border-amber-400 hover:bg-amber-50/50 transition-colors shadow-2xs"
+              className="flex items-center gap-1.5 px-2 sm:px-2.5 py-1.5 rounded-xl text-xs font-semibold border transition-colors shadow-2xs"
+              style={{
+                borderColor: currentTheme.borderColor,
+                backgroundColor: currentTheme.bgSurface,
+                color: currentTheme.textMain,
+              }}
               title="Mood Insights: Local Enclave D3.js Visualization (Last 30 Days)"
             >
-              <BarChart3 className="w-4 h-4 text-amber-600" />
-              <span className="hidden md:inline">Mood Insights</span>
+              <BarChart3 className="w-4 h-4 text-amber-500" />
+              <span className="hidden xl:inline">Insights</span>
             </button>
           )}
 

@@ -24,6 +24,8 @@ export interface SecurityAuditEvent {
     | 'CRYPTO_SHRED_EXECUTED'
     | 'MOOD_UPDATED_VIA_VOICE'
     | 'VOICE_COMMAND_EXECUTED'
+    | 'VOICE_REFLECTION_SAVED'
+    | 'THEME_CHANGED'
     | 'DATA_SOVEREIGNTY_BACKUP_EXPORTED';
   severity: 'INFO' | 'WARNING' | 'CRITICAL';
   details: string;

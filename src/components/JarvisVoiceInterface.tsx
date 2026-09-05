@@ -21,6 +21,7 @@ import { InteractionEntry, InteractionMessage, MOOD_OPTIONS } from '../types';
 import { analyzeDistressOnDevice, sanitizeTextForAudioDLP, EMPATHY_FALLBACK_AUDIO_SCRIPT } from '../crypto/guardrails';
 import { enclave, logSecurityEvent } from '../crypto/workerClient';
 import { VoiceCommandGuideModal } from './VoiceCommandGuideModal';
+import { useTheme, VOICE_PERSONAS, ACCENT_COLORS, VoicePersonaId } from '../theme/ThemeContext';
 
 interface JarvisVoiceInterfaceProps {
   entry: InteractionEntry;
@@ -35,6 +36,16 @@ export function JarvisVoiceInterface({
   onTriggerSafeMode,
   onClose,
 }: JarvisVoiceInterfaceProps) {
+  const {
+    activeVoice,
+    activeVoiceId,
+    setActiveVoiceId,
+    voiceSpeed,
+    voicePitch,
+    isVoiceMuted,
+    accentColorId,
+  } = useTheme();
+
   const [isListening, setIsListening] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [isThinking, setIsThinking] = useState(false);
@@ -42,10 +53,10 @@ export function JarvisVoiceInterface({
   const [interimText, setInterimText] = useState('');
   const [audioDlpAlert, setAudioDlpAlert] = useState<string | null>(null);
   const [jarvisFeedback, setJarvisFeedback] = useState<string>(
-    "Hello! I am Jarvis, your private journaling friend. Tap the microphone and tell me about your day."
+    `Hello! I am ${activeVoice.name}, your private journaling companion. Tap the microphone and tell me about your day.`
   );
   const [fontSizeTier, setFontSizeTier] = useState<'normal' | 'large' | 'huge'>('large');
-  const [voiceVolumeEnabled, setVoiceVolumeEnabled] = useState(true);
+  const [voiceVolumeEnabled, setVoiceVolumeEnabled] = useState(!isVoiceMuted);
   const [isVoiceGuideOpen, setIsVoiceGuideOpen] = useState(false);
   const [autosaveStatus, setAutosaveStatus] = useState<'saved' | 'saving' | 'error'>('saved');
   const [lastSavedTime, setLastSavedTime] = useState<string>('Just now');
@@ -137,8 +148,23 @@ export function JarvisVoiceInterface({
     }
 
     const utterance = new SpeechSynthesisUtterance(cleanText);
-    utterance.rate = 0.92; // Slightly slower, calm cadence for elderly and children
-    utterance.pitch = 1.05; // Gentle, warm tone
+    utterance.rate = voiceSpeed || activeVoice.rate;
+    utterance.pitch = voicePitch || activeVoice.pitch;
+
+    // Pick matching browser voice if available
+    try {
+      const availableVoices = synthRef.current.getVoices();
+      if (availableVoices && availableVoices.length > 0) {
+        const matched = availableVoices.find((v) =>
+          activeVoice.preferredVoiceNames.some((pref) =>
+            v.name.toLowerCase().includes(pref.toLowerCase())
+          )
+        );
+        if (matched) {
+          utterance.voice = matched;
+        }
+      }
+    } catch {}
 
     utterance.onstart = () => setIsSpeaking(true);
     utterance.onend = () => setIsSpeaking(false);
@@ -482,6 +508,27 @@ export function JarvisVoiceInterface({
               </>
             )}
           </div>
+
+          {/* Voice Persona Selector */}
+          <select
+            value={activeVoiceId}
+            onChange={(e) => {
+              const newId = e.target.value as VoicePersonaId;
+              setActiveVoiceId(newId);
+              const p = VOICE_PERSONAS.find((x) => x.id === newId);
+              if (p) {
+                setJarvisFeedback(`Switched voice companion to ${p.name} (${p.title}).`);
+              }
+            }}
+            className="px-2.5 py-1.5 rounded-xl bg-stone-800 text-stone-200 border border-stone-700 text-xs font-semibold focus:outline-none focus:border-amber-400 cursor-pointer"
+            title="Switch Companion Voice Persona"
+          >
+            {VOICE_PERSONAS.map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.name} ({p.title})
+              </option>
+            ))}
+          </select>
 
           {/* Voice Command Guide Launcher */}
           <button

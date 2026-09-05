@@ -38,6 +38,7 @@ import {
 import { LocationPickerModal } from './LocationPickerModal';
 import { analyzeDistressOnDevice, sanitizeTextForAudioDLP } from '../crypto/guardrails';
 import { enclave } from '../crypto/workerClient';
+import { useTheme, ACCENT_COLORS } from '../theme/ThemeContext';
 
 interface WorkspaceProps {
   entry: InteractionEntry;
@@ -81,6 +82,7 @@ export const Workspace: React.FC<WorkspaceProps> = ({
   onOpenMoodInsights,
   onOpenVoiceGuide,
 }) => {
+  const { currentTheme, accentColorId } = useTheme();
   const [inputText, setInputText] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
   const [isSummarizing, setIsSummarizing] = useState(false);
@@ -462,9 +464,22 @@ export const Workspace: React.FC<WorkspaceProps> = ({
   };
 
   return (
-    <div id="journal-workspace" className="flex-1 flex flex-col h-[calc(100vh-4rem)] overflow-hidden bg-white">
+    <div
+      id="journal-workspace"
+      className="flex-1 flex flex-col h-[calc(100vh-4rem)] overflow-hidden transition-colors"
+      style={{
+        backgroundColor: currentTheme.bgMain,
+        color: currentTheme.textMain,
+      }}
+    >
       {/* Top Session Bar */}
-      <div className="border-b border-stone-200 px-4 sm:px-6 py-3 bg-stone-50/70 flex flex-col gap-3 shrink-0">
+      <div
+        className="border-b px-4 sm:px-6 py-3 flex flex-col gap-3 shrink-0 transition-colors"
+        style={{
+          backgroundColor: currentTheme.bgSurface,
+          borderColor: currentTheme.borderColor,
+        }}
+      >
         <div className="flex items-center justify-between gap-3">
           {/* Mobile sidebar toggle */}
           <button
@@ -495,7 +510,8 @@ export const Workspace: React.FC<WorkspaceProps> = ({
               key={entry.id + entry.title}
               onBlur={handleTitleBlur}
               placeholder="Name your reflection..."
-              className="flex-1 text-base sm:text-lg font-semibold text-stone-900 bg-transparent hover:bg-white focus:bg-white px-2 py-1 -ml-2 rounded-md border border-transparent focus:border-stone-300 focus:outline-none transition-colors truncate"
+              className="flex-1 text-base sm:text-lg font-semibold bg-transparent px-2 py-1 -ml-2 rounded-md border border-transparent focus:border-stone-300 focus:outline-none transition-colors truncate"
+              style={{ color: currentTheme.textMain }}
             />
           </div>
 
@@ -1024,7 +1040,13 @@ export const Workspace: React.FC<WorkspaceProps> = ({
       </div>
 
       {/* Input Area */}
-      <div className="border-t border-stone-200 p-4 bg-stone-50/70 shrink-0">
+      <div
+        className="border-t p-4 shrink-0 transition-colors"
+        style={{
+          backgroundColor: currentTheme.bgSurface,
+          borderColor: currentTheme.borderColor,
+        }}
+      >
         <div className="max-w-3xl mx-auto relative">
           <textarea
             id="journal-prompt-textarea"
@@ -1039,7 +1061,12 @@ export const Workspace: React.FC<WorkspaceProps> = ({
               }
             }}
             placeholder="Write your journal reflection or response (Press ⌘ + Enter to send)..."
-            className="w-full pl-4 pr-12 py-3 text-sm bg-white rounded-xl border border-stone-300 placeholder-stone-400 text-stone-900 focus:outline-none focus:ring-2 focus:ring-stone-400 focus:border-transparent resize-none shadow-xs"
+            className="w-full pl-4 pr-12 py-3 text-sm rounded-xl border placeholder-stone-400 focus:outline-none focus:ring-2 resize-none shadow-xs"
+            style={{
+              backgroundColor: currentTheme.bgMain,
+              borderColor: currentTheme.borderColor,
+              color: currentTheme.textMain,
+            }}
           />
 
           <div className="absolute right-3 bottom-3 flex items-center gap-1.5">
@@ -1048,10 +1075,15 @@ export const Workspace: React.FC<WorkspaceProps> = ({
                 id="mic-voice-button"
                 type="button"
                 onClick={onOpenJarvisVoice}
-                className="p-2 rounded-lg bg-amber-100 hover:bg-amber-200 text-amber-900 border border-amber-300 transition-all shadow-xs cursor-pointer active:scale-95"
-                title="Speak to Jarvis (Hands-Free Ambient Voice)"
+                className="p-2 rounded-lg border transition-all shadow-xs cursor-pointer active:scale-95"
+                style={{
+                  borderColor: currentTheme.borderColor,
+                  backgroundColor: `${ACCENT_COLORS[accentColorId].hex}15`,
+                  color: ACCENT_COLORS[accentColorId].hex,
+                }}
+                title="Speak (Hands-Free Ambient Voice)"
               >
-                <Mic className="w-4 h-4 text-amber-800" />
+                <Mic className="w-4 h-4" />
               </button>
             )}
 
@@ -1060,15 +1092,18 @@ export const Workspace: React.FC<WorkspaceProps> = ({
               type="button"
               onClick={() => handleSendMessage()}
               disabled={!inputText.trim() || isGenerating}
-              className="p-2 rounded-lg bg-stone-900 hover:bg-stone-800 disabled:opacity-40 text-white transition-all shadow-xs cursor-pointer active:scale-95"
+              className="p-2 rounded-lg disabled:opacity-40 text-white transition-all shadow-xs cursor-pointer active:scale-95"
+              style={{
+                backgroundColor: ACCENT_COLORS[accentColorId].hex,
+              }}
               title="Send reflection to Gemini"
             >
               <Send className="w-4 h-4" />
             </button>
           </div>
         </div>
-        <p className="text-center text-[11px] text-stone-500 mt-2">
-          Responses generated with Gemini 3.6 Flash • Automatically persisted to Cloud Firestore
+        <p className="text-center text-[11px] mt-2 opacity-75" style={{ color: currentTheme.textMuted }}>
+          Responses generated with Gemini 3.6 Flash • Encrypted in Web Worker Enclave & Persisted to Firestore
         </p>
       </div>
 

@@ -452,6 +452,140 @@ Provide:
 });
 
 // ==========================================
+// Voice-to-Reflection Concierge Endpoint
+// (Transforms raw spoken thoughts into a polished, structured reflection)
+// ==========================================
+app.post('/api/gemini/voice-to-reflection', async (req, res) => {
+  const clientIp = (req.headers['x-forwarded-for'] as string) || req.socket.remoteAddress || '127.0.0.1';
+
+  if (!checkRateLimit(clientIp)) {
+    return res.status(429).json({
+      error: 'Rate limit exceeded. Please wait a few seconds before generating another reflection.',
+      retryAfterSeconds: 6,
+    });
+  }
+
+  try {
+    const body = req.body && typeof req.body === 'object' ? req.body : {};
+    const spokenText = typeof body.spokenText === 'string' ? body.spokenText.trim() : '';
+    const preferredMode = typeof body.mode === 'string' ? body.mode : 'reflection';
+
+    if (!spokenText || spokenText.length < 3) {
+      return res.status(400).json({ error: 'Spoken transcript is empty or too short.' });
+    }
+
+    // Server-Side Suicide & Distress Safeguard
+    const SUICIDE_DISTRESS_REGEX = /\b(kill myself|want to die|suicide|suicidal|end my life|end it all|hurt myself|cutting myself|slit my (wrists?|throat)|overdose|take all my pills|hang myself|jump off|shoot myself|drink bleach|better off dead|wish i were dead|tired of living|give up on life|goodbye world|everyone would be happier without me|no reason to live)\b/i;
+    if (SUICIDE_DISTRESS_REGEX.test(spokenText)) {
+      recordAuditLog(
+        'CRISIS_EMERGENCY_TRIGGERED',
+        'CRITICAL',
+        'voice-concierge-guard',
+        'Suicide/self-harm trigger detected in voice reflection. Crisis lifeline activated.'
+      );
+      return res.json({
+        crisisDetected: true,
+        title: 'Emergency Crisis Assistance',
+        cleanedUserText: spokenText,
+        category: 'Personal Reflection',
+        mood: '😰 Anxious',
+        aiReply: "⚠️ **Emergency Support & Crisis Lifeline Activated**\n\nIf you are feeling overwhelmed, thinking about hurting yourself, or in crisis, please know that you are not alone and help is immediately available right now:\n\n- **Call Emergency Services (911)** for immediate emergency assistance.\n- **988 Suicide & Crisis Lifeline**: Call or text **988** (Available 24/7, free, confidential).\n- **Crisis Text Line**: Text **HOME** to **741741**.\n\nPlease reach out to these trained professionals who care and can support you through this.",
+        keyInsights: ['Crisis resources offered', 'Prioritizing safety above all'],
+        spokenConfirmation: "I'm connecting you with emergency support right away. You are safe and help is available 24/7.",
+        modelUsed: 'emergency-safety-shield',
+      });
+    }
+
+    if (aiCircuitBreaker.isOpen()) {
+      return res.json({
+        crisisDetected: false,
+        title: 'Spoken Journal Entry',
+        cleanedUserText: spokenText,
+        category: 'Personal Reflection',
+        mood: '😌 Calm',
+        aiReply: "I heard your reflection and have written it down for you. Taking time to speak your truth is a deeply restorative practice.",
+        keyInsights: ['Spoken reflection saved', 'Taking time to pause and articulate feelings'],
+        spokenConfirmation: "I've written and saved your reflection. Your words are safely recorded in your journal.",
+        modelUsed: 'on-device-safe-empathy-fallback',
+      });
+    }
+
+    const prompt = `A user has spoken their stream-of-consciousness thoughts because they cannot type or prefer voice journaling:
+---
+"${spokenText}"
+---
+Your task is to transform this spoken reflection into a pristine, beautifully written journal entry.
+Provide:
+1. "title": A thoughtful, evocative title (3-6 words).
+2. "cleanedUserText": A polished, coherent version of the user's spoken thoughts. Remove stuttering, disfluencies ("um", "uh", "like", "you know"), but strictly preserve every single emotional nuance, experience, and detail they shared.
+3. "category": Choose the most fitting category strictly from: "Personal Reflection", "Brainstorming", "Gratitude", "Decision Making", "Goal Setting", "General".
+4. "mood": Choose the most fitting mood string strictly from: "😊 Joyful", "😌 Calm", "🤔 Reflective", "💡 Inspired", "🌿 Grounded", "🌸 Grateful", "⚡ Energized", "😔 Melancholy", "😰 Anxious", "😤 Frustrated".
+5. "aiReply": An empathetic, thoughtful reflection response (2-3 paragraphs with markdown). Validate what they went through, offer constructive perspective, and invite a gentle follow-up question.
+6. "keyInsights": 3-4 concise bullet-point takeaways or realizations from what they shared.
+7. "spokenConfirmation": A warm 1-2 sentence spoken summary suitable for text-to-speech, acknowledging what was captured and how it was saved.`;
+
+    const result = await generateContentWithFallback({
+      contents: prompt,
+      config: {
+        responseMimeType: 'application/json',
+        responseSchema: {
+          type: Type.OBJECT,
+          properties: {
+            title: { type: Type.STRING, description: 'Evocative title for the reflection' },
+            cleanedUserText: { type: Type.STRING, description: 'Polished transcript of user thoughts' },
+            category: { type: Type.STRING, description: 'Category matching one of the designated options' },
+            mood: { type: Type.STRING, description: 'Mood with emoji' },
+            aiReply: { type: Type.STRING, description: 'Thoughtful, compassionate AI reflection response' },
+            keyInsights: {
+              type: Type.ARRAY,
+              items: { type: Type.STRING },
+              description: '3-4 key takeaways',
+            },
+            spokenConfirmation: { type: Type.STRING, description: 'Brief 1-2 sentence spoken confirmation for TTS' },
+          },
+          required: ['title', 'cleanedUserText', 'category', 'mood', 'aiReply', 'keyInsights', 'spokenConfirmation'],
+        },
+      },
+    });
+
+    let parsed: any = {};
+    try {
+      parsed = JSON.parse(result.text);
+    } catch {
+      parsed = {
+        title: 'Spoken Reflection',
+        cleanedUserText: spokenText,
+        category: 'Personal Reflection',
+        mood: '🤔 Reflective',
+        aiReply: "I've written down your spoken thoughts. Every moment of reflection helps ground your awareness.",
+        keyInsights: ['Articulating thoughts aloud', 'Processing feelings with patience'],
+        spokenConfirmation: "I've written your reflection and saved it in your journal.",
+      };
+    }
+
+    aiCircuitBreaker.recordSuccess();
+
+    return res.json({
+      crisisDetected: false,
+      title: parsed.title || 'Spoken Reflection',
+      cleanedUserText: parsed.cleanedUserText || spokenText,
+      category: parsed.category || 'Personal Reflection',
+      mood: parsed.mood || '🤔 Reflective',
+      aiReply: parsed.aiReply || "I have received and recorded your thoughts.",
+      keyInsights: Array.isArray(parsed.keyInsights) ? parsed.keyInsights : [],
+      spokenConfirmation: parsed.spokenConfirmation || `I've written your reflection titled "${parsed.title || 'Spoken Reflection'}".`,
+      modelUsed: result.modelUsed,
+    });
+  } catch (error: any) {
+    aiCircuitBreaker.recordFailure();
+    console.error('Error generating voice reflection:', error);
+    return res.status(500).json({
+      error: error?.message || 'Failed to process voice reflection.',
+    });
+  }
+});
+
+// ==========================================
 // SSRF & Egress Protection Utilities
 // ==========================================
 function isValidSecureWebhookUrl(urlStr: string): boolean {

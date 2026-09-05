@@ -22,6 +22,9 @@ import { PasskeyAuthModal } from './components/PasskeyAuthModal';
 import { MoodInsightsModal } from './components/MoodInsightsModal';
 import { VoiceCommandGuideModal } from './components/VoiceCommandGuideModal';
 import { AdminDashboardModal } from './components/AdminDashboardModal';
+import { ThemeCustomizerModal } from './components/ThemeCustomizerModal';
+import { VoiceCheckInModal } from './components/VoiceCheckInModal';
+import { useTheme } from './theme/ThemeContext';
 import { enclave, logSecurityEvent } from './crypto/workerClient';
 
 const DURESS_DECOY_ENTRIES: InteractionEntry[] = [
@@ -95,6 +98,21 @@ export default function App() {
   const [isVoiceGuideOpen, setIsVoiceGuideOpen] = useState(false);
   const [isAdminDashboardOpen, setIsAdminDashboardOpen] = useState(false);
   const [simulatedRole, setSimulatedRole] = useState<'superadmin' | 'admin' | 'user'>('superadmin');
+
+  // Atmosphere, Custom Themes & Voice Concierge
+  const { currentTheme, hasSeenVoiceCheckIn, setHasSeenVoiceCheckIn } = useTheme();
+  const [isThemeCustomizerOpen, setIsThemeCustomizerOpen] = useState(false);
+  const [isVoiceCheckInOpen, setIsVoiceCheckInOpen] = useState(false);
+
+  // Trigger Voice Check-in automatically after login if not yet completed in this session
+  useEffect(() => {
+    if (currentUser && !hasSeenVoiceCheckIn && !isAuthLoading) {
+      const timer = setTimeout(() => {
+        setIsVoiceCheckInOpen(true);
+      }, 800);
+      return () => clearTimeout(timer);
+    }
+  }, [currentUser, hasSeenVoiceCheckIn, isAuthLoading]);
 
   // Verify Admin privilege against bootstrap email or role
   const isActualAdmin =
@@ -293,12 +311,20 @@ export default function App() {
 
   return (
     <ScreenPrivacyGuard>
-      <div className="min-h-screen bg-stone-50 flex flex-col font-sans text-stone-900 selection:bg-amber-100 selection:text-amber-900">
+      <div
+        className="min-h-screen flex flex-col font-sans selection:bg-amber-100 selection:text-amber-900 transition-colors"
+        style={{
+          backgroundColor: currentTheme.bgMain,
+          color: currentTheme.textMain,
+        }}
+      >
         {/* Navigation Header */}
         <Navbar
           user={currentUser}
           onSignOut={handleSignOut}
           onOpenSecurityModal={() => setIsSecurityModalOpen(true)}
+          onOpenThemeCustomizer={() => setIsThemeCustomizerOpen(true)}
+          onOpenVoiceCheckIn={() => setIsVoiceCheckInOpen(true)}
           onOpenJarvisVoice={() => {
             if (!selectedEntry) {
               handleCreateNewEntry();
@@ -432,6 +458,33 @@ export default function App() {
           activeRole={simulatedRole}
           onSimulateRoleChange={(role) => setSimulatedRole(role)}
         />
+
+        {/* Theme & Voice Personas Customizer Modal */}
+        <ThemeCustomizerModal
+          isOpen={isThemeCustomizerOpen}
+          onClose={() => setIsThemeCustomizerOpen(false)}
+          onOpenVoiceCheckIn={() => setIsVoiceCheckInOpen(true)}
+        />
+
+        {/* Voice Reflection Concierge Modal (Post-Login & On-Demand) */}
+        {currentUser && (
+          <VoiceCheckInModal
+            isOpen={isVoiceCheckInOpen}
+            onClose={() => setIsVoiceCheckInOpen(false)}
+            userId={currentUser.uid}
+            onReflectionCreated={(entry) => {
+              setEntries((prev) => [entry, ...prev.filter((e) => e.id !== entry.id)]);
+              setSelectedEntry(entry);
+              logSecurityEvent('VOICE_REFLECTION_SAVED', 'INFO', `Voice reflection generated and saved: "${entry.title}"`);
+            }}
+            onSelectWriteMyself={() => {
+              if (!selectedEntry) {
+                handleCreateNewEntry();
+              }
+            }}
+            onTriggerSafeMode={handleTriggerSafeMode}
+          />
+        )}
       </div>
     </ScreenPrivacyGuard>
   );
