@@ -280,6 +280,7 @@ app.post('/api/gemini/reflect', async (req, res) => {
       recordAuditLog(
         'CRISIS_EMERGENCY_TRIGGERED',
         'CRITICAL',
+        'system-guard',
         'Suicide/self-harm trigger detected in reflection prompt. Crisis emergency resources and 911/988 assistance dispatched.'
       );
       return res.json({
