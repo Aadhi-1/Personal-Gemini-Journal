@@ -21,6 +21,8 @@ import { useTheme, ACCENT_COLORS } from '../theme/ThemeContext';
 interface NavbarProps {
   user: User | null;
   onSignOut: () => void;
+  onSignIn?: () => void;
+  isGuest?: boolean;
   onOpenSecurityModal: () => void;
   onOpenJarvisVoice?: () => void;
   onOpenPasskeyModal?: () => void;
@@ -37,6 +39,8 @@ interface NavbarProps {
 export const Navbar: React.FC<NavbarProps> = ({
   user,
   onSignOut,
+  onSignIn,
+  isGuest,
   onOpenSecurityModal,
   onOpenJarvisVoice,
   onOpenPasskeyModal,
@@ -249,8 +253,53 @@ export const Navbar: React.FC<NavbarProps> = ({
             <span>Zero-Trust</span>
           </button>
 
-          {user && (
+          {/* User Profile / Google SSO */}
+          {user ? (
             <div className="flex items-center gap-2 pl-2 border-l" style={{ borderColor: currentTheme.borderColor }}>
+              {isGuest ? (
+                <>
+                  <span className="text-[11px] px-2 py-0.5 rounded-full font-semibold bg-amber-100 text-amber-900 border border-amber-300">
+                    Guest Mode
+                  </span>
+                  {onSignIn && (
+                    <button
+                      id="navbar-google-sso-button"
+                      type="button"
+                      onClick={onSignIn}
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold text-white bg-stone-900 hover:bg-stone-800 transition-all shadow-xs cursor-pointer active:scale-95"
+                      title="Connect Google Single Sign-On to persist in Cloud Firestore"
+                    >
+                      <svg className="w-3.5 h-3.5" viewBox="0 0 24 24">
+                        <path fill="#EA4335" d="M12 5c1.6 0 3 .6 4.1 1.6l3.1-3.1C17.3 1.7 14.8 1 12 1 7.5 1 3.7 3.6 1.9 7.3l3.7 2.9C6.5 7.4 9 5 12 5z"/>
+                        <path fill="#4285F4" d="M23.5 12.3c0-.8-.1-1.7-.2-2.3H12v4.6h6.5c-.3 1.5-1.1 2.8-2.4 3.7l3.7 2.9c2.2-2 3.7-5 3.7-8.9z"/>
+                        <path fill="#FBBC05" d="M5.6 14.8c-.2-.7-.4-1.5-.4-2.8s.2-2.1.4-2.8L1.9 6.3C.7 8.7 0 10.3 0 12s.7 3.3 1.9 5.7l3.7-2.9z"/>
+                        <path fill="#34A853" d="M12 23c3.2 0 6-1.1 8-3l-3.7-2.9c-1.1.7-2.5 1.2-4.3 1.2-3 0-5.5-2.4-6.4-5.2L1.9 16c1.8 3.7 5.6 7 10.1 7z"/>
+                      </svg>
+                      <span>Sign In with Google</span>
+                    </button>
+                  )}
+                </>
+              ) : (
+                <div className="flex items-center gap-2">
+                  {user.photoURL ? (
+                    <img
+                      src={user.photoURL}
+                      alt={user.displayName || 'Google Account'}
+                      referrerPolicy="no-referrer"
+                      className="w-7 h-7 rounded-full border border-stone-300 shadow-2xs object-cover"
+                    />
+                  ) : (
+                    <div className="w-7 h-7 rounded-full bg-stone-900 text-white font-bold text-xs flex items-center justify-center shadow-2xs">
+                      {user.displayName ? user.displayName[0].toUpperCase() : user.email ? user.email[0].toUpperCase() : 'G'}
+                    </div>
+                  )}
+                  <div className="hidden 2xl:flex flex-col text-left">
+                    <span className="text-xs font-semibold max-w-[110px] truncate">{user.displayName || 'Google Account'}</span>
+                    <span className="text-[10px] opacity-70 max-w-[110px] truncate" style={{ color: currentTheme.textMuted }}>{user.email}</span>
+                  </div>
+                </div>
+              )}
+
               <button
                 id="sign-out-button"
                 type="button"
@@ -267,6 +316,26 @@ export const Navbar: React.FC<NavbarProps> = ({
                 <span>Sign Out</span>
               </button>
             </div>
+          ) : (
+            onSignIn && (
+              <div className="flex items-center gap-2 pl-2 border-l" style={{ borderColor: currentTheme.borderColor }}>
+                <button
+                  id="navbar-sign-in-button"
+                  type="button"
+                  onClick={onSignIn}
+                  className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-semibold text-white bg-stone-900 hover:bg-stone-800 transition-all shadow-xs cursor-pointer active:scale-95"
+                  title="Sign In with Google Single Sign-On"
+                >
+                  <svg className="w-3.5 h-3.5" viewBox="0 0 24 24">
+                    <path fill="#EA4335" d="M12 5c1.6 0 3 .6 4.1 1.6l3.1-3.1C17.3 1.7 14.8 1 12 1 7.5 1 3.7 3.6 1.9 7.3l3.7 2.9C6.5 7.4 9 5 12 5z"/>
+                    <path fill="#4285F4" d="M23.5 12.3c0-.8-.1-1.7-.2-2.3H12v4.6h6.5c-.3 1.5-1.1 2.8-2.4 3.7l3.7 2.9c2.2-2 3.7-5 3.7-8.9z"/>
+                    <path fill="#FBBC05" d="M5.6 14.8c-.2-.7-.4-1.5-.4-2.8s.2-2.1.4-2.8L1.9 6.3C.7 8.7 0 10.3 0 12s.7 3.3 1.9 5.7l3.7-2.9z"/>
+                    <path fill="#34A853" d="M12 23c3.2 0 6-1.1 8-3l-3.7-2.9c-1.1.7-2.5 1.2-4.3 1.2-3 0-5.5-2.4-6.4-5.2L1.9 16c1.8 3.7 5.6 7 10.1 7z"/>
+                  </svg>
+                  <span>Sign In with Google</span>
+                </button>
+              </div>
+            )
           )}
         </div>
 
@@ -614,22 +683,99 @@ export const Navbar: React.FC<NavbarProps> = ({
               </div>
             </div>
 
-            {/* Bottom Actions: Sign Out */}
-            {user && (
-              <div className="pt-4 mt-6 border-t" style={{ borderColor: currentTheme.borderColor }}>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setIsMobileMenuOpen(false);
-                    onSignOut();
-                  }}
-                  className="w-full flex items-center justify-center gap-2 p-3 rounded-xl border text-xs font-semibold hover:opacity-80 transition-all cursor-pointer"
-                  style={{ borderColor: currentTheme.borderColor }}
-                >
-                  <LogOut className="w-4 h-4 text-rose-500" />
-                  <span>Lock Session & Sign Out</span>
-                </button>
+            {/* Bottom Actions: Google SSO / Sign Out */}
+            {user ? (
+              <div className="pt-4 mt-6 border-t space-y-2" style={{ borderColor: currentTheme.borderColor }}>
+                {isGuest ? (
+                  <>
+                    {onSignIn && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsMobileMenuOpen(false);
+                          onSignIn();
+                        }}
+                        className="w-full flex items-center justify-center gap-2 p-3 rounded-xl bg-stone-900 text-white text-xs font-semibold hover:bg-stone-800 transition-all cursor-pointer shadow-xs active:scale-95"
+                      >
+                        <svg className="w-4 h-4" viewBox="0 0 24 24">
+                          <path fill="#EA4335" d="M12 5c1.6 0 3 .6 4.1 1.6l3.1-3.1C17.3 1.7 14.8 1 12 1 7.5 1 3.7 3.6 1.9 7.3l3.7 2.9C6.5 7.4 9 5 12 5z"/>
+                          <path fill="#4285F4" d="M23.5 12.3c0-.8-.1-1.7-.2-2.3H12v4.6h6.5c-.3 1.5-1.1 2.8-2.4 3.7l3.7 2.9c2.2-2 3.7-5 3.7-8.9z"/>
+                          <path fill="#FBBC05" d="M5.6 14.8c-.2-.7-.4-1.5-.4-2.8s.2-2.1.4-2.8L1.9 6.3C.7 8.7 0 10.3 0 12s.7 3.3 1.9 5.7l3.7-2.9z"/>
+                          <path fill="#34A853" d="M12 23c3.2 0 6-1.1 8-3l-3.7-2.9c-1.1.7-2.5 1.2-4.3 1.2-3 0-5.5-2.4-6.4-5.2L1.9 16c1.8 3.7 5.6 7 10.1 7z"/>
+                        </svg>
+                        <span>Sign In with Google Single Sign-On</span>
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsMobileMenuOpen(false);
+                        onSignOut();
+                      }}
+                      className="w-full flex items-center justify-center gap-2 p-2.5 rounded-xl border text-xs font-medium hover:opacity-80 transition-all cursor-pointer"
+                      style={{ borderColor: currentTheme.borderColor }}
+                    >
+                      <LogOut className="w-3.5 h-3.5 text-rose-500" />
+                      <span>Exit Guest Mode</span>
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <div className="flex items-center gap-3 p-2 rounded-xl bg-stone-100/70 border border-stone-200/60">
+                      {user.photoURL ? (
+                        <img
+                          src={user.photoURL}
+                          alt={user.displayName || 'Google Account'}
+                          referrerPolicy="no-referrer"
+                          className="w-8 h-8 rounded-full border border-stone-300 shadow-2xs object-cover"
+                        />
+                      ) : (
+                        <div className="w-8 h-8 rounded-full bg-stone-900 text-white font-bold text-xs flex items-center justify-center shadow-2xs">
+                          {user.displayName ? user.displayName[0].toUpperCase() : user.email ? user.email[0].toUpperCase() : 'G'}
+                        </div>
+                      )}
+                      <div className="flex flex-col text-left overflow-hidden">
+                        <span className="text-xs font-semibold truncate">{user.displayName || 'Google Account'}</span>
+                        <span className="text-[10px] text-stone-500 truncate">{user.email}</span>
+                      </div>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsMobileMenuOpen(false);
+                        onSignOut();
+                      }}
+                      className="w-full flex items-center justify-center gap-2 p-2.5 rounded-xl border text-xs font-semibold hover:opacity-80 transition-all cursor-pointer"
+                      style={{ borderColor: currentTheme.borderColor }}
+                    >
+                      <LogOut className="w-4 h-4 text-rose-500" />
+                      <span>Lock Session & Sign Out</span>
+                    </button>
+                  </>
+                )}
               </div>
+            ) : (
+              onSignIn && (
+                <div className="pt-4 mt-6 border-t" style={{ borderColor: currentTheme.borderColor }}>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsMobileMenuOpen(false);
+                      onSignIn();
+                    }}
+                    className="w-full flex items-center justify-center gap-2 p-3 rounded-xl bg-stone-900 text-white text-xs font-semibold hover:bg-stone-800 transition-all cursor-pointer shadow-xs active:scale-95"
+                  >
+                    <svg className="w-4 h-4" viewBox="0 0 24 24">
+                      <path fill="#EA4335" d="M12 5c1.6 0 3 .6 4.1 1.6l3.1-3.1C17.3 1.7 14.8 1 12 1 7.5 1 3.7 3.6 1.9 7.3l3.7 2.9C6.5 7.4 9 5 12 5z"/>
+                      <path fill="#4285F4" d="M23.5 12.3c0-.8-.1-1.7-.2-2.3H12v4.6h6.5c-.3 1.5-1.1 2.8-2.4 3.7l3.7 2.9c2.2-2 3.7-5 3.7-8.9z"/>
+                      <path fill="#FBBC05" d="M5.6 14.8c-.2-.7-.4-1.5-.4-2.8s.2-2.1.4-2.8L1.9 6.3C.7 8.7 0 10.3 0 12s.7 3.3 1.9 5.7l3.7-2.9z"/>
+                      <path fill="#34A853" d="M12 23c3.2 0 6-1.1 8-3l-3.7-2.9c-1.1.7-2.5 1.2-4.3 1.2-3 0-5.5-2.4-6.4-5.2L1.9 16c1.8 3.7 5.6 7 10.1 7z"/>
+                    </svg>
+                    <span>Sign In with Google Single Sign-On</span>
+                  </button>
+                </div>
+              )
             )}
           </div>
         </div>

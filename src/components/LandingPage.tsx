@@ -3,12 +3,14 @@ import { Sparkles, Shield, Lock, Brain, MessageSquare, Database, ArrowRight } fr
 
 interface LandingPageProps {
   onSignIn: () => void;
+  onExploreGuest?: () => void;
   isLoading: boolean;
   errorMessage: string | null;
 }
 
 export const LandingPage: React.FC<LandingPageProps> = ({
   onSignIn,
+  onExploreGuest,
   isLoading,
   errorMessage,
 }) => {
@@ -33,8 +35,8 @@ export const LandingPage: React.FC<LandingPageProps> = ({
             Engage in thoughtful multi-turn dialogues with Gemini, explore life decisions, unpack creative blocks, and save private insights to your isolated Cloud Firestore vault.
           </p>
 
-          {/* Sign In Button */}
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-6">
+          {/* Sign In & Guest Buttons */}
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-3 mb-6">
             <button
               id="google-sign-in-button"
               type="button"
@@ -67,6 +69,18 @@ export const LandingPage: React.FC<LandingPageProps> = ({
               <span>{isLoading ? 'Connecting with Google...' : 'Sign In with Google'}</span>
               {!isLoading && <ArrowRight className="w-4 h-4 text-stone-300" />}
             </button>
+
+            {onExploreGuest && (
+              <button
+                id="explore-guest-mode-button"
+                type="button"
+                onClick={onExploreGuest}
+                className="w-full sm:w-auto flex items-center justify-center gap-2 px-6 py-3.5 rounded-xl text-sm font-semibold text-stone-700 bg-white hover:bg-stone-50 border border-stone-300 active:scale-[0.99] transition-all shadow-xs cursor-pointer"
+              >
+                <Sparkles className="w-4 h-4 text-amber-600" />
+                <span>Try Instant Guest Mode</span>
+              </button>
+            )}
           </div>
 
           {errorMessage && (

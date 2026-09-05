@@ -80,6 +80,7 @@ const DURESS_DECOY_ENTRIES: InteractionEntry[] = [
 
 export default function App() {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [isGuestMode, setIsGuestMode] = useState(false);
   const [isAuthLoading, setIsAuthLoading] = useState(true);
   const [authError, setAuthError] = useState<string | null>(null);
 
@@ -191,7 +192,8 @@ export default function App() {
       setIsAuthLoading(true);
       setAuthError(null);
       await signInWithGoogle();
-      logSecurityEvent('PASSKEY_AUTHENTICATED', 'INFO', 'Authenticated session initialized.');
+      setIsGuestMode(false);
+      logSecurityEvent('PASSKEY_AUTHENTICATED', 'INFO', 'Authenticated session initialized via Google SSO.');
     } catch (error: any) {
       console.error('Sign in error:', error);
       setAuthError(error.message || 'Failed to sign in with Google.');
@@ -200,11 +202,41 @@ export default function App() {
     }
   };
 
+  // Handle Guest Explorer Mode
+  const handleExploreGuest = () => {
+    setIsGuestMode(true);
+    setAuthError(null);
+    const guestUid = 'guest-explorer';
+    const welcomeEntry: InteractionEntry = {
+      id: `reflection-welcome-guest`,
+      userId: guestUid,
+      title: 'Welcome to Mindful Journaling',
+      category: 'Personal Reflection',
+      mode: 'reflection',
+      mood: '✨ Inspired',
+      messages: [
+        {
+          id: 'msg-welcome-1',
+          role: 'model',
+          content: `Welcome to **ReflectAI**! 🌿\n\nI am your contemplative AI companion powered by **Gemini 3.6 Flash**. You are currently exploring in **Guest Mode**.\n\n### 🌟 Features ready for you:\n- 📷 **Photos & GIFs**: Click **+ Photo/GIF** in the header or prompt ribbon to attach images or search trending GIFs.\n- 🌐 **Google Search Grounding**: Toggle Google Grounding **ON** to synthesize live web facts with verified citations.\n- 🔮 **Gemini Mindful Tools**: Click **Gemini Tools** to launch Cognitive Reframing, Action Step Synthesizer, or Perspective Switcher.\n- 🎙️ **Ambient Voice**: Audition our 5 voice personas or trigger hands-free check-ins.\n\nWhenever you want to securely save and encrypt your reflections in Cloud Firestore, click **Sign In with Google** at the top right!`,
+          timestamp: new Date().toISOString(),
+        },
+      ],
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+    setEntries([welcomeEntry]);
+    setSelectedEntry(welcomeEntry);
+  };
+
   // Handle Sign Out
   const handleSignOut = async () => {
     try {
       await enclave.shredKey();
-      await signOut();
+      if (currentUser) {
+        await signOut();
+      }
+      setIsGuestMode(false);
       setSelectedEntry(null);
       setEntries([]);
       setIsDuressDecoy(false);
@@ -216,11 +248,11 @@ export default function App() {
 
   // Create a new reflection session
   const handleCreateNewEntry = () => {
-    if (!currentUser) return;
+    const activeUid = currentUser ? currentUser.uid : 'guest-explorer';
 
     const newEntry: InteractionEntry = {
       id: `reflection-${Date.now()}`,
-      userId: currentUser.uid,
+      userId: activeUid,
       title: 'New Reflection',
       category: 'Personal Reflection',
       mode: 'reflection',
@@ -229,11 +261,30 @@ export default function App() {
       updatedAt: new Date().toISOString(),
     };
 
+    if (!currentUser && isGuestMode) {
+      setEntries((prev) => [newEntry, ...prev]);
+    }
+
     setSelectedEntry(newEntry);
   };
 
-  // Save/Update interaction in Firestore
+  // Save/Update interaction in Firestore (or local state for guest mode)
   const handleUpdateEntry = async (updated: InteractionEntry) => {
+    // In Guest Mode without Firebase user
+    if (!currentUser && isGuestMode) {
+      setEntries((prev) => {
+        const idx = prev.findIndex((e) => e.id === updated.id);
+        if (idx >= 0) {
+          const next = [...prev];
+          next[idx] = updated;
+          return next;
+        }
+        return [updated, ...prev];
+      });
+      setSelectedEntry(updated);
+      return;
+    }
+
     if (!currentUser) return;
 
     // In Duress Decoy Mode, do NOT persist to actual cloud database!
@@ -246,12 +297,25 @@ export default function App() {
     // Optimistically update active entry in state
     setSelectedEntry(updated);
 
-    // Save to Firestore
-    await saveInteraction(currentUser.uid, updated);
+    // Save to Firestore with error resilience
+    try {
+      await saveInteraction(currentUser.uid, updated);
+    } catch (dbErr: any) {
+      console.error('Firestore save interaction error:', dbErr);
+    }
   };
 
-  // Delete interaction from Firestore
+  // Delete interaction from Firestore (or local state for guest)
   const handleDeleteEntry = async (entryId: string) => {
+    if (!currentUser && isGuestMode) {
+      setEntries((prev) => prev.filter((e) => e.id !== entryId));
+      if (selectedEntry?.id === entryId) {
+        const remaining = entries.filter((e) => e.id !== entryId);
+        setSelectedEntry(remaining.length > 0 ? remaining[0] : null);
+      }
+      return;
+    }
+
     if (!currentUser) return;
 
     if (isDuressDecoy) {
@@ -337,6 +401,8 @@ export default function App() {
         <Navbar
           user={currentUser}
           onSignOut={handleSignOut}
+          onSignIn={handleSignIn}
+          isGuest={isGuestMode && !currentUser}
           onOpenSecurityModal={() => setIsSecurityModalOpen(true)}
           onOpenThemeCustomizer={() => setIsThemeCustomizerOpen(true)}
           onOpenVoiceCheckIn={() => setIsVoiceCheckInOpen(true)}
@@ -356,9 +422,10 @@ export default function App() {
         />
 
         {/* Main Content Area */}
-        {!currentUser ? (
+        {!currentUser && !isGuestMode ? (
           <LandingPage
             onSignIn={handleSignIn}
+            onExploreGuest={handleExploreGuest}
             isLoading={isAuthLoading}
             errorMessage={authError}
           />

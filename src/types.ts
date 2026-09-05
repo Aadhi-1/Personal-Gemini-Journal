@@ -8,11 +8,30 @@ export type JournalCategory =
   | 'Goal Setting'
   | 'General';
 
+export interface MediaAttachment {
+  id: string;
+  type: 'photo' | 'gif';
+  url: string;
+  title?: string;
+  caption?: string;
+  source?: 'upload' | 'camera' | 'giphy' | 'url';
+  mimeType?: string;
+  base64?: string;
+  dimensions?: { width: number; height: number };
+}
+
+export interface GroundingSource {
+  title?: string;
+  uri?: string;
+}
+
 export interface InteractionMessage {
   id: string;
   role: 'user' | 'model';
   content: string;
   timestamp: string;
+  attachments?: MediaAttachment[];
+  groundingSources?: GroundingSource[];
 }
 
 export interface JournalLocation {
@@ -85,6 +104,7 @@ export interface InteractionEntry {
   location?: JournalLocation | null;
   summary?: string;
   keyInsights?: string[];
+  attachments?: MediaAttachment[];
   messages: InteractionMessage[];
   createdAt: string;
   updatedAt: string;

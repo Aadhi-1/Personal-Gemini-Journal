@@ -35,6 +35,9 @@ import {
   Minimize2,
   PanelLeftOpen,
   PanelLeftClose,
+  Image as ImageIcon,
+  Film,
+  Globe,
 } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import { APIProvider, Map, AdvancedMarker, Pin } from '@vis.gl/react-google-maps';
@@ -47,10 +50,15 @@ import {
   MOOD_OPTIONS,
   JOURNAL_STICKERS,
   JournalSticker,
+  MediaAttachment,
+  GroundingSource,
 } from '../types';
 import { LocationPickerModal } from './LocationPickerModal';
 import { StickerPickerModal } from './StickerPickerModal';
 import { ReflectionTimer } from './ReflectionTimer';
+import { MediaPickerModal } from './MediaPickerModal';
+import { MediaLightboxModal } from './MediaLightboxModal';
+import { GeminiToolsModal } from './GeminiToolsModal';
 import { analyzeDistressOnDevice, sanitizeTextForAudioDLP } from '../crypto/guardrails';
 import { enclave } from '../crypto/workerClient';
 import {
@@ -139,10 +147,68 @@ export const Workspace: React.FC<WorkspaceProps> = ({
   const [externalAlertStatus, setExternalAlertStatus] = useState<string | null>(null);
   const [isSendingAlert, setIsSendingAlert] = useState(false);
   const [isActionsMenuOpen, setIsActionsMenuOpen] = useState(false);
+
+  // Photos, GIFs & Gemini Features State
+  const [stagedAttachments, setStagedAttachments] = useState<MediaAttachment[]>([]);
+  const [isMediaModalOpen, setIsMediaModalOpen] = useState(false);
+  const [mediaPickerMode, setMediaPickerMode] = useState<'prompt' | 'entry'>('prompt');
+  const [lightboxMedia, setLightboxMedia] = useState<MediaAttachment | null>(null);
+  const [isGeminiToolsModalOpen, setIsGeminiToolsModalOpen] = useState(false);
+  const [enableSearchGrounding, setEnableSearchGrounding] = useState(false);
+
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const personaMenuRef = useRef<HTMLDivElement>(null);
   const actionsMenuRef = useRef<HTMLDivElement>(null);
+
+  // Handle media selection (either for prompt or overall entry)
+  const handleSelectMedia = (attachment: MediaAttachment) => {
+    if (mediaPickerMode === 'entry') {
+      handleAddEntryAttachment(attachment);
+    } else {
+      setStagedAttachments((prev) => [...prev, attachment]);
+    }
+  };
+
+  const handleRemoveStagedAttachment = (indexToRemove: number) => {
+    setStagedAttachments((prev) => prev.filter((_, idx) => idx !== indexToRemove));
+  };
+
+  const handleAddEntryAttachment = async (attachment: MediaAttachment) => {
+    const currentAttachments = entry.attachments || [];
+    const updatedEntry: InteractionEntry = {
+      ...entry,
+      attachments: [...currentAttachments, attachment],
+      updatedAt: new Date().toISOString(),
+    };
+    await executeAutosave(updatedEntry);
+  };
+
+  const handleRemoveEntryAttachment = async (attachmentId: string) => {
+    const currentAttachments = entry.attachments || [];
+    const updatedEntry: InteractionEntry = {
+      ...entry,
+      attachments: currentAttachments.filter((a) => a.id !== attachmentId),
+      updatedAt: new Date().toISOString(),
+    };
+    await executeAutosave(updatedEntry);
+  };
+
+  const handleApplyQuickInsight = async (generatedText: string, featureTitle: string) => {
+    const toolMessage: InteractionMessage = {
+      id: `msg-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+      role: 'model',
+      content: `### 🔮 ${featureTitle}\n\n${generatedText}`,
+      timestamp: new Date().toISOString(),
+    };
+    const updatedMessages = [...entry.messages, toolMessage];
+    const updatedEntry: InteractionEntry = {
+      ...entry,
+      messages: updatedMessages,
+      updatedAt: new Date().toISOString(),
+    };
+    await executeAutosave(updatedEntry);
+  };
 
   // Close actions 3-dots menu and persona menu on click outside
   useEffect(() => {
@@ -434,11 +500,13 @@ export const Workspace: React.FC<WorkspaceProps> = ({
 
     setErrorBanner(null);
 
+    const currentStaged = [...stagedAttachments];
     const userMessage: InteractionMessage = {
       id: `msg-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
       role: 'user',
       content,
       timestamp: new Date().toISOString(),
+      attachments: currentStaged.length > 0 ? currentStaged : undefined,
     };
 
     const updatedMessages = [...entry.messages, userMessage];
@@ -452,23 +520,30 @@ export const Workspace: React.FC<WorkspaceProps> = ({
 
     try {
       setIsGenerating(true);
-      // Clear input buffer on success trigger, but keep backup in case of failure
+      // Clear input buffer and staged attachments on success trigger
       if (!textToSend) {
         setInputText('');
       }
+      setStagedAttachments([]);
 
       // First guarantee user message persistence
       await onUpdateEntry(updatedEntryWithUser);
 
-      // Call server-side Gemini API
+      // Call server-side Gemini API (multimodal + grounding supported)
       const response = await fetch('/api/gemini/reflect', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          messages: updatedMessages.map((m) => ({ role: m.role, content: m.content })),
+          messages: updatedMessages.map((m) => ({
+            role: m.role,
+            content: m.content,
+            attachments: m.attachments,
+          })),
           mode: entry.mode,
           title: entry.title,
           personaId: activeVoiceId,
+          enableSearchGrounding,
+          attachments: currentStaged.length > 0 ? currentStaged : undefined,
         }),
       });
 
@@ -485,6 +560,7 @@ export const Workspace: React.FC<WorkspaceProps> = ({
         role: 'model',
         content: modelReply,
         timestamp: new Date().toISOString(),
+        groundingSources: data.groundingSources && data.groundingSources.length > 0 ? data.groundingSources : undefined,
       };
 
       const finalMessages = [...updatedMessages, modelMessage];
@@ -520,8 +596,11 @@ export const Workspace: React.FC<WorkspaceProps> = ({
       });
     } catch (err: any) {
       console.error('Error during reflection interaction:', err);
-      // Restore input text buffer for resilience
+      // Restore input text buffer and staged attachments for resilience
       setInputText(content);
+      if (currentStaged.length > 0) {
+        setStagedAttachments(currentStaged);
+      }
       setErrorBanner(
         `Failed to complete reflection: ${err.message || 'Network or model failure'}. Your input text was preserved.`
       );
@@ -1233,6 +1312,55 @@ export const Workspace: React.FC<WorkspaceProps> = ({
                 <span>+ Sticker</span>
               </button>
             </div>
+
+            {/* Photos & GIFs Entry Gallery Chips & Add Button */}
+            <div className="flex items-center gap-1.5 flex-wrap">
+              {entry.attachments && entry.attachments.length > 0 && (
+                <div className="flex items-center gap-1 flex-wrap">
+                  {entry.attachments.map((att) => (
+                    <div
+                      key={att.id}
+                      className="group relative inline-flex items-center gap-1.5 px-2 py-0.5 rounded-lg text-[11px] font-medium bg-stone-100 border border-stone-300 shadow-2xs hover:bg-stone-200 transition-all cursor-pointer"
+                      onClick={() => setLightboxMedia(att)}
+                      title={`${att.title || 'Attachment'} - Click to view in full resolution`}
+                    >
+                      <img
+                        src={att.url}
+                        alt={att.title || 'Attachment'}
+                        referrerPolicy="no-referrer"
+                        className="w-4 h-4 rounded object-cover"
+                      />
+                      <span className="max-w-[80px] truncate">{att.title || (att.type === 'gif' ? 'GIF' : 'Photo')}</span>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleRemoveEntryAttachment(att.id);
+                        }}
+                        className="p-0.5 opacity-60 hover:opacity-100 hover:text-red-600 transition-colors"
+                        title="Remove attachment from entry"
+                      >
+                        <X className="w-2.5 h-2.5" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              <button
+                id="workspace-add-media-btn"
+                type="button"
+                onClick={() => {
+                  setMediaPickerMode('entry');
+                  setIsMediaModalOpen(true);
+                }}
+                className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium text-stone-700 hover:text-indigo-700 bg-white hover:bg-indigo-50/50 border border-stone-300 hover:border-indigo-300 transition-colors shadow-2xs cursor-pointer"
+                title="Attach photos and trending GIFs to this reflection"
+              >
+                <ImageIcon className="w-3.5 h-3.5 text-indigo-600" />
+                <span>+ Photo/GIF</span>
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -1485,11 +1613,64 @@ export const Workspace: React.FC<WorkspaceProps> = ({
                       : 'bg-stone-100/90 text-stone-900 border border-stone-200/80 rounded-tl-none prose prose-stone max-w-none'
                   }`}
                 >
+                  {/* Attached Media Cards */}
+                  {message.attachments && message.attachments.length > 0 && (
+                    <div className="flex flex-wrap gap-2 mb-2">
+                      {message.attachments.map((att) => (
+                        <div
+                          key={att.id}
+                          onClick={() => setLightboxMedia(att)}
+                          className="relative group rounded-xl overflow-hidden border border-stone-300/80 shadow-xs cursor-pointer hover:opacity-95 transition-all max-w-[200px]"
+                        >
+                          <img
+                            src={att.url}
+                            alt={att.title || 'Attachment'}
+                            referrerPolicy="no-referrer"
+                            className="w-full h-32 object-cover"
+                          />
+                          <div className="absolute top-1.5 left-1.5 px-1.5 py-0.5 rounded bg-black/60 backdrop-blur-xs text-[9px] font-bold text-white uppercase tracking-wider">
+                            {att.type === 'gif' ? 'GIF' : 'Photo'}
+                          </div>
+                          {att.title && (
+                            <div className="absolute bottom-0 inset-x-0 bg-linear-to-t from-black/80 via-black/40 to-transparent p-1.5 text-[10px] text-white truncate">
+                              {att.title}
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
                   {isUser ? (
                     <p className="whitespace-pre-wrap">{message.content}</p>
                   ) : (
                     <div className="markdown-body">
                       <ReactMarkdown>{message.content}</ReactMarkdown>
+                    </div>
+                  )}
+
+                  {/* Google Search Grounding Citations */}
+                  {message.groundingSources && message.groundingSources.length > 0 && (
+                    <div className="mt-2.5 pt-2 border-t border-stone-200/70 text-[11px]">
+                      <div className="flex items-center gap-1 text-stone-500 font-semibold mb-1">
+                        <Globe className="w-3 h-3 text-blue-500" />
+                        <span>Google Search Grounded Sources</span>
+                      </div>
+                      <div className="flex flex-wrap gap-1.5">
+                        {message.groundingSources.map((source, sIdx) => (
+                          <a
+                            key={sIdx}
+                            href={source.uri}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200/80 transition-colors truncate max-w-[220px]"
+                            title={source.title}
+                          >
+                            <span className="truncate">{source.title || source.uri}</span>
+                            <ExternalLink className="w-2.5 h-2.5 shrink-0 opacity-70" />
+                          </a>
+                        ))}
+                      </div>
                     </div>
                   )}
                   <div
@@ -1570,63 +1751,157 @@ export const Workspace: React.FC<WorkspaceProps> = ({
           borderColor: currentTheme.borderColor,
         }}
       >
-        <div className="max-w-3xl mx-auto relative">
-          <textarea
-            id="journal-prompt-textarea"
-            ref={textareaRef}
-            rows={3}
-            value={inputText}
-            onChange={(e) => setInputText(e.target.value)}
-            onKeyDown={(e) => {
-              if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
-                e.preventDefault();
-                handleSendMessage();
-              }
-            }}
-            placeholder="Write your journal reflection or response (Press ⌘ + Enter to send)..."
-            className="w-full pl-4 pr-12 py-3 text-sm rounded-xl border placeholder-stone-400 focus:outline-none focus:ring-2 resize-none shadow-xs"
-            style={{
-              backgroundColor: currentTheme.bgMain,
-              borderColor: currentTheme.borderColor,
-              color: currentTheme.textMain,
-            }}
-          />
+        <div className="max-w-3xl mx-auto">
+          {/* Staged Attachments Tray */}
+          {stagedAttachments.length > 0 && (
+            <div className="flex items-center gap-2 mb-2 p-2 rounded-xl bg-stone-100/90 border border-stone-200/90 overflow-x-auto">
+              <span className="text-[11px] font-semibold text-stone-500 shrink-0 ml-1">Attached:</span>
+              {stagedAttachments.map((att, idx) => (
+                <div
+                  key={att.id || idx}
+                  className="relative inline-flex items-center gap-2 pl-1.5 pr-2 py-1 rounded-lg bg-white border border-stone-300 shadow-2xs shrink-0"
+                >
+                  <img
+                    src={att.url}
+                    alt={att.title || 'Attachment'}
+                    referrerPolicy="no-referrer"
+                    className="w-7 h-7 rounded object-cover cursor-pointer"
+                    onClick={() => setLightboxMedia(att)}
+                  />
+                  <div className="flex flex-col text-left text-[10px] leading-tight">
+                    <span className="font-semibold text-stone-800 max-w-[100px] truncate">
+                      {att.title || (att.type === 'gif' ? 'GIF' : 'Photo')}
+                    </span>
+                    <span className="text-stone-400 capitalize">{att.type}</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => handleRemoveStagedAttachment(idx)}
+                    className="p-1 text-stone-400 hover:text-red-600 rounded transition-colors"
+                    title="Remove attachment"
+                  >
+                    <X className="w-3 h-3" />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
 
-          <div className="absolute right-3 bottom-3 flex items-center gap-1.5">
-            {onOpenJarvisVoice && (
-              <button
-                id="mic-voice-button"
-                type="button"
-                onClick={onOpenJarvisVoice}
-                className="p-2 rounded-lg border transition-all shadow-xs cursor-pointer active:scale-95"
-                style={{
-                  borderColor: currentTheme.borderColor,
-                  backgroundColor: `${ACCENT_COLORS[accentColorId].hex}15`,
-                  color: ACCENT_COLORS[accentColorId].hex,
-                }}
-                title="Speak (Hands-Free Ambient Voice)"
-              >
-                <Mic className="w-4 h-4" />
-              </button>
-            )}
-
-            <button
-              id="send-reflection-button"
-              type="button"
-              onClick={() => handleSendMessage()}
-              disabled={!inputText.trim() || isGenerating}
-              className="p-2 rounded-lg disabled:opacity-40 text-white transition-all shadow-xs cursor-pointer active:scale-95"
-              style={{
-                backgroundColor: ACCENT_COLORS[accentColorId].hex,
+          <div className="relative">
+            <textarea
+              id="journal-prompt-textarea"
+              ref={textareaRef}
+              rows={3}
+              value={inputText}
+              onChange={(e) => setInputText(e.target.value)}
+              onKeyDown={(e) => {
+                if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
+                  e.preventDefault();
+                  handleSendMessage();
+                }
               }}
-              title="Send reflection to Gemini"
-            >
-              <Send className="w-4 h-4" />
-            </button>
+              placeholder="Write your journal reflection or response (Press ⌘ + Enter to send)..."
+              className="w-full pl-4 pr-12 py-3 text-sm rounded-xl border placeholder-stone-400 focus:outline-none focus:ring-2 resize-none shadow-xs"
+              style={{
+                backgroundColor: currentTheme.bgMain,
+                borderColor: currentTheme.borderColor,
+                color: currentTheme.textMain,
+              }}
+            />
+
+            <div className="absolute right-3 bottom-3 flex items-center gap-1.5">
+              {onOpenJarvisVoice && (
+                <button
+                  id="mic-voice-button"
+                  type="button"
+                  onClick={onOpenJarvisVoice}
+                  className="p-2 rounded-lg border transition-all shadow-xs cursor-pointer active:scale-95"
+                  style={{
+                    borderColor: currentTheme.borderColor,
+                    backgroundColor: `${ACCENT_COLORS[accentColorId].hex}15`,
+                    color: ACCENT_COLORS[accentColorId].hex,
+                  }}
+                  title="Speak (Hands-Free Ambient Voice)"
+                >
+                  <Mic className="w-4 h-4" />
+                </button>
+              )}
+
+              <button
+                id="send-reflection-button"
+                type="button"
+                onClick={() => handleSendMessage()}
+                disabled={(!inputText.trim() && stagedAttachments.length === 0) || isGenerating}
+                className="p-2 rounded-lg disabled:opacity-40 text-white transition-all shadow-xs cursor-pointer active:scale-95"
+                style={{
+                  backgroundColor: ACCENT_COLORS[accentColorId].hex,
+                }}
+                title="Send reflection to Gemini"
+              >
+                <Send className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+
+          {/* Prompt Tool Ribbon: Photo/GIF, Google Search Grounding, Gemini Mindful Tools */}
+          <div className="flex items-center justify-between gap-2 mt-2 pt-1">
+            <div className="flex items-center gap-1.5 flex-wrap">
+              {/* Attach Photo / GIF button */}
+              <button
+                id="prompt-attach-media-btn"
+                type="button"
+                onClick={() => {
+                  setMediaPickerMode('prompt');
+                  setIsMediaModalOpen(true);
+                }}
+                className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium border transition-all cursor-pointer ${
+                  stagedAttachments.length > 0
+                    ? 'bg-indigo-50 border-indigo-300 text-indigo-700 shadow-2xs font-semibold'
+                    : 'bg-white hover:bg-stone-50 border-stone-300 text-stone-700'
+                }`}
+                title="Attach Photo or GIF to this prompt"
+              >
+                <ImageIcon className="w-3.5 h-3.5 text-indigo-600" />
+                <span>Photo / GIF</span>
+                {stagedAttachments.length > 0 && (
+                  <span className="ml-0.5 px-1.5 py-0.2 rounded-full text-[10px] bg-indigo-600 text-white font-bold">
+                    {stagedAttachments.length}
+                  </span>
+                )}
+              </button>
+
+              {/* Google Search Grounding toggle */}
+              <button
+                id="prompt-google-grounding-btn"
+                type="button"
+                onClick={() => setEnableSearchGrounding((prev) => !prev)}
+                className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium border transition-all cursor-pointer ${
+                  enableSearchGrounding
+                    ? 'bg-blue-50 border-blue-400 text-blue-800 shadow-2xs font-semibold ring-1 ring-blue-300'
+                    : 'bg-white hover:bg-stone-50 border-stone-300 text-stone-600'
+                }`}
+                title="Ground response with live Google Search citations"
+              >
+                <Globe className={`w-3.5 h-3.5 ${enableSearchGrounding ? 'text-blue-600 animate-pulse' : 'text-stone-400'}`} />
+                <span>Google Grounding {enableSearchGrounding ? 'ON' : 'OFF'}</span>
+              </button>
+
+              {/* Gemini Mindful Quick Tools button */}
+              <button
+                id="prompt-gemini-tools-btn"
+                type="button"
+                onClick={() => setIsGeminiToolsModalOpen(true)}
+                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium bg-amber-50/80 hover:bg-amber-100 border border-amber-300 text-amber-900 transition-all cursor-pointer shadow-2xs"
+                title="Launch Gemini Mindful Tools (Cognitive Reframe, Action Steps, Perspective Switcher)"
+              >
+                <Sparkles className="w-3.5 h-3.5 text-amber-600" />
+                <span>Gemini Tools</span>
+              </button>
+            </div>
           </div>
         </div>
         <p className="text-center text-[11px] mt-2 opacity-75" style={{ color: currentTheme.textMuted }}>
-          Responses generated with Gemini 3.6 Flash • Encrypted in Web Worker Enclave & Persisted to Firestore
+          Responses generated with Gemini 3.6 Flash & Google Search • Encrypted in Web Worker Enclave & Persisted to Firestore
         </p>
       </div>
 
@@ -1644,6 +1919,35 @@ export const Workspace: React.FC<WorkspaceProps> = ({
         onClose={() => setIsStickerModalOpen(false)}
         selectedStickerIds={entry.stickers || []}
         onToggleSticker={handleToggleSticker}
+      />
+
+      {/* Media Picker Modal (Photos & Trending GIFs) */}
+      <MediaPickerModal
+        isOpen={isMediaModalOpen}
+        onClose={() => setIsMediaModalOpen(false)}
+        onSelectMedia={handleSelectMedia}
+      />
+
+      {/* Full-Screen Media Lightbox Viewer */}
+      <MediaLightboxModal
+        media={lightboxMedia}
+        onClose={() => setLightboxMedia(null)}
+        onRemove={handleRemoveEntryAttachment}
+      />
+
+      {/* Gemini Mindful Tools Modal (Cognitive Reframe, Action Steps, Perspective Switcher) */}
+      <GeminiToolsModal
+        isOpen={isGeminiToolsModalOpen}
+        onClose={() => setIsGeminiToolsModalOpen(false)}
+        contextText={
+          entry.messages.filter((m) => m.role === 'user').slice(-1)[0]?.content ||
+          entry.messages.slice(-1)[0]?.content ||
+          entry.title
+        }
+        activeAttachments={entry.attachments || []}
+        onApplyInsightToChat={(insightText) => handleApplyQuickInsight(insightText, 'Gemini Mindful Synthesis')}
+        enableSearchGrounding={enableSearchGrounding}
+        onToggleSearchGrounding={setEnableSearchGrounding}
       />
     </div>
   );
