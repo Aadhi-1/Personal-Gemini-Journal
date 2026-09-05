@@ -40,6 +40,7 @@ export function JarvisVoiceInterface({
     activeVoice,
     activeVoiceId,
     setActiveVoiceId,
+    applyVoiceCommand,
     voiceSpeed,
     voicePitch,
     isVoiceMuted,
@@ -215,7 +216,13 @@ export function JarvisVoiceInterface({
       return;
     }
 
-    // 2. Intercept Natural Voice Commands
+    // 2. Intercept Natural Voice Commands & Voice-Activated Theme/Persona Switching
+    const cmdResult = applyVoiceCommand(spokenText);
+    if (cmdResult.matched) {
+      setJarvisFeedback(cmdResult.feedback);
+      speakAloud(cmdResult.feedback);
+      return;
+    }
 
     // Voice Command: Safe Mode / Emergency Help
     if (
@@ -396,6 +403,7 @@ export function JarvisVoiceInterface({
           messages: updatedMessages.slice(-8),
           mode: entry.mode,
           title: entry.title,
+          personaId: activeVoiceId,
         }),
       });
 
@@ -517,7 +525,9 @@ export function JarvisVoiceInterface({
               setActiveVoiceId(newId);
               const p = VOICE_PERSONAS.find((x) => x.id === newId);
               if (p) {
-                setJarvisFeedback(`Switched voice companion to ${p.name} (${p.title}).`);
+                const notice = `Switched voice companion to ${p.name}. ${p.greetingSample}`;
+                setJarvisFeedback(notice);
+                speakAloud(notice);
               }
             }}
             className="px-2.5 py-1.5 rounded-xl bg-stone-800 text-stone-200 border border-stone-700 text-xs font-semibold focus:outline-none focus:border-amber-400 cursor-pointer"

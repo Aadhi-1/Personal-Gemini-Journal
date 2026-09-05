@@ -8,7 +8,10 @@ export type ThemeId =
   | 'glacier'
   | 'rose'
   | 'amethyst'
-  | 'monochrome';
+  | 'monochrome'
+  | 'terracotta'
+  | 'nebula'
+  | 'pine';
 
 export type AccentColorId =
   | 'amber'
@@ -17,10 +20,16 @@ export type AccentColorId =
   | 'rose'
   | 'violet'
   | 'cyan'
-  | 'orange';
+  | 'orange'
+  | 'gold'
+  | 'teal';
 
 export type VoicePersonaId =
+  | 'calm_mentor'
+  | 'analytical_observer'
+  | 'empathetic_friend'
   | 'jarvis'
+  | 'serene_guide'
   | 'samantha'
   | 'oliver'
   | 'elena'
@@ -50,6 +59,8 @@ export interface VoicePersona {
   rate: number;
   greetingSample: string;
   preferredVoiceNames: string[];
+  geminiPromptTone: string;
+  tag: string;
 }
 
 export const THEME_PRESETS: ThemePreset[] = [
@@ -144,6 +155,45 @@ export const THEME_PRESETS: ThemePreset[] = [
     defaultAccent: 'orange',
     previewColors: ['#f8f9fa', '#0f172a', '#64748b'],
   },
+  {
+    id: 'terracotta',
+    name: 'Sunset Terracotta',
+    description: 'Warm Mediterranean clay, Tuscan brick, and golden dusk sun warmth.',
+    isDark: false,
+    bgMain: '#fbf4ef',
+    bgSurface: '#ffffff',
+    borderColor: '#eddcd2',
+    textMain: '#291711',
+    textMuted: '#7f5548',
+    defaultAccent: 'orange',
+    previewColors: ['#fbf4ef', '#ea580c', '#291711'],
+  },
+  {
+    id: 'nebula',
+    name: 'Cosmic Nebula',
+    description: 'Infinite interstellar space dark with celestial violet and stellar cyan.',
+    isDark: true,
+    bgMain: '#080914',
+    bgSurface: '#101326',
+    borderColor: '#1e2445',
+    textMain: '#e2e8f0',
+    textMuted: '#8b9bb4',
+    defaultAccent: 'cyan',
+    previewColors: ['#080914', '#38bdf8', '#e2e8f0'],
+  },
+  {
+    id: 'pine',
+    name: 'Deep Forest Pine',
+    description: 'Lush dark midnight woodland canopy, deep evergreen, and soothing moss slate.',
+    isDark: true,
+    bgMain: '#09130d',
+    bgSurface: '#112217',
+    borderColor: '#1e3828',
+    textMain: '#ecfdf5',
+    textMuted: '#6ee7b7',
+    defaultAccent: 'emerald',
+    previewColors: ['#09130d', '#10b981', '#ecfdf5'],
+  },
 ];
 
 export const ACCENT_COLORS: Record<AccentColorId, { name: string; hex: string; ringClass: string; bgClass: string; textClass: string }> = {
@@ -196,65 +246,98 @@ export const ACCENT_COLORS: Record<AccentColorId, { name: string; hex: string; r
     bgClass: 'bg-orange-500 hover:bg-orange-400 text-white',
     textClass: 'text-orange-600',
   },
+  gold: {
+    name: 'Radiant Gold',
+    hex: '#eab308',
+    ringClass: 'ring-yellow-500',
+    bgClass: 'bg-yellow-500 hover:bg-yellow-400 text-stone-950',
+    textClass: 'text-yellow-600',
+  },
+  teal: {
+    name: 'Deep Teal',
+    hex: '#14b8a6',
+    ringClass: 'ring-teal-500',
+    bgClass: 'bg-teal-500 hover:bg-teal-400 text-white',
+    textClass: 'text-teal-600',
+  },
 };
 
 export const VOICE_PERSONAS: VoicePersona[] = [
   {
-    id: 'jarvis',
-    name: 'Jarvis',
-    title: 'Articulate & Sophisticated Companion',
-    description: 'Calm, measured, and distinguished cadence for structured intellectual contemplation.',
+    id: 'calm_mentor',
+    name: 'Calm Mentor',
+    title: 'Mindful, Grounded & Patient Guide',
+    description: 'Steady, patient, and deeply grounded cadence ideal for emotional regulation, slowing down, and mindful clarity.',
     gender: 'male',
-    pitch: 0.95,
-    rate: 0.94,
-    greetingSample: "Greetings. I am Jarvis, your private reflection companion. I am ready whenever you wish to contemplate.",
-    preferredVoiceNames: ['Google UK English Male', 'Daniel', 'Arthur', 'Oliver', 'George', 'Microsoft George', 'en-GB'],
+    pitch: 0.88,
+    rate: 0.88,
+    greetingSample: "Welcome back. Take a gentle, grounding breath with me. I am your Calm Mentor. There is no rush here—let us explore your thoughts with patience and spaciousness.",
+    preferredVoiceNames: ['Google US English Male', 'Alex', 'Oliver', 'Fred', 'Microsoft David', 'en-US'],
+    geminiPromptTone: 'You are a Calm Mentor. Speak with patient, grounded wisdom, somatic awareness, and non-judgmental spaciousness. Offer gentle perspective, encourage mindful pauses, validate emotional reality, and help the user slow down and observe the bigger picture without rush.',
+    tag: 'Mindfulness & Grounding',
   },
   {
-    id: 'samantha',
-    name: 'Samantha',
-    title: 'Warm & Empathetic Guide',
-    description: 'Naturally gentle, encouraging, and supportive rhythm for heartfelt personal reflections.',
+    id: 'empathetic_friend',
+    name: 'Empathetic Friend',
+    title: 'Warm, Supportive & Compassionate Confidant',
+    description: 'Naturally gentle, encouraging, and emotionally resonant cadence for heartfelt personal vulnerability, comfort, and deep validation.',
     gender: 'female',
     pitch: 1.08,
     rate: 0.95,
-    greetingSample: "Hello there! I'm Samantha. Whether your day was joyful or heavy, I'm here to listen and support you.",
+    greetingSample: "Hello there! I am your Empathetic Friend. Whether your day was joyful, heavy, or somewhere in between, I am right here beside you with an open heart. What's on your mind?",
     preferredVoiceNames: ['Google US English', 'Samantha', 'Karen', 'Victoria', 'Moira', 'Microsoft Zira', 'en-US'],
+    geminiPromptTone: 'You are an Empathetic Friend. Speak with genuine warmth, emotional validation, unconditional positive regard, and gentle, heartfelt care. Validate feelings first, avoid being cold or overly clinical, and remind the user that they are not alone and that their human experiences are worthy of tenderness.',
+    tag: 'Warmth & Validation',
   },
   {
-    id: 'oliver',
-    name: 'Oliver',
-    title: 'Mindful & Grounded Mentor',
-    description: 'Steady, patient, and deeply grounded tone ideal for stress reduction and clarity.',
+    id: 'analytical_observer',
+    name: 'Analytical Observer',
+    title: 'Objective, Socratic & Structured Thinker',
+    description: 'Clear, precise, and logically structured rhythm tailored for cognitive pattern analysis, decision making, and strategic clarity.',
+    gender: 'neutral',
+    pitch: 1.02,
+    rate: 0.98,
+    greetingSample: "Hello. I am your Analytical Observer. Let us examine your experiences, untangle complex variables, and surface the core insights beneath the noise.",
+    preferredVoiceNames: ['Google US English', 'Tom', 'Rishi', 'Fred', 'Microsoft Mark', 'en-US'],
+    geminiPromptTone: 'You are an Analytical Observer. Offer razor-sharp clarity, cognitive pattern identification, cognitive reframing, and gentle Socratic inquiry. Break complex feelings into core variables, surface underlying assumptions and cognitive distortions, and help structure strategic decisions with logic and balance.',
+    tag: 'Clarity & Socratic Inquiry',
+  },
+  {
+    id: 'jarvis',
+    name: 'Articulate Strategist (Jarvis)',
+    title: 'Distinguished, Sophisticated & Proactive Companion',
+    description: 'Calm, measured, and distinguished British cadence for high-level intellectual contemplation and structured next steps.',
     gender: 'male',
-    pitch: 0.88,
-    rate: 0.92,
-    greetingSample: "Welcome back. Take a quiet breath. I'm Oliver, and we can take all the time you need today.",
-    preferredVoiceNames: ['Google US English Male', 'Alex', 'Fred', 'Microsoft David', 'en-US'],
+    pitch: 0.95,
+    rate: 0.94,
+    greetingSample: "Greetings. I am Jarvis, your articulate strategic companion. I stand ready to assist you in distilling your reflections with precision, eloquence, and structure.",
+    preferredVoiceNames: ['Google UK English Male', 'Daniel', 'Arthur', 'George', 'Microsoft George', 'en-GB'],
+    geminiPromptTone: 'You are an Articulate Strategist and Executive Reflection Companion (Jarvis). Respond with refined eloquence, impeccable structure, high emotional intelligence, and proactive synthesis of actionable next steps.',
+    tag: 'Strategic & Eloquent',
   },
   {
-    id: 'elena',
-    name: 'Elena',
-    title: 'Serene & Meditative Voice',
-    description: 'Soft, compassionate, and soothing voice crafted to de-escalate anxiety and fatigue.',
+    id: 'serene_guide',
+    name: 'Serene Guide',
+    title: 'Gentle, Meditative & Restorative Presence',
+    description: 'Soft, compassionate, and tranquil voice crafted to de-escalate anxiety, soothe mental fatigue, and restore inner equilibrium.',
     gender: 'female',
     pitch: 1.12,
     rate: 0.90,
-    greetingSample: "Peace to you today. I am Elena. Let's create a calm space together for your mind to rest and reflect.",
+    greetingSample: "Peace to you today. I am your Serene Guide. Let us create a quiet sanctuary together for your mind to rest, release tension, and reflect.",
     preferredVoiceNames: ['Google UK English Female', 'Serena', 'Fiona', 'Tessa', 'Microsoft Hazel', 'en-AU', 'en-GB'],
-  },
-  {
-    id: 'orion',
-    name: 'Orion',
-    title: 'Crisp & Analytical Strategist',
-    description: 'Clear, modern, and direct rhythm tailored for decision making and goal setting.',
-    gender: 'neutral',
-    pitch: 1.02,
-    rate: 1.00,
-    greetingSample: "Hello! I'm Orion. Let's analyze your thoughts, distill your priorities, and turn ambiguity into clear action.",
-    preferredVoiceNames: ['Google US English', 'Tom', 'Rishi', 'en-US'],
+    geminiPromptTone: 'You are a Serene Guide. Speak softly and mindfully, with a focus on somatic calming, stress dissipation, loving-kindness, and restorative peace.',
+    tag: 'Restorative & Soothing',
   },
 ];
+
+export const resolveVoicePersona = (id: string): VoicePersona => {
+  if (id === 'oliver' || id === 'calm_mentor') return VOICE_PERSONAS.find((v) => v.id === 'calm_mentor') || VOICE_PERSONAS[0];
+  if (id === 'samantha' || id === 'empathetic_friend') return VOICE_PERSONAS.find((v) => v.id === 'empathetic_friend') || VOICE_PERSONAS[1];
+  if (id === 'orion' || id === 'analytical_observer') return VOICE_PERSONAS.find((v) => v.id === 'analytical_observer') || VOICE_PERSONAS[2];
+  if (id === 'elena' || id === 'serene_guide') return VOICE_PERSONAS.find((v) => v.id === 'serene_guide') || VOICE_PERSONAS[4];
+  if (id === 'jarvis') return VOICE_PERSONAS.find((v) => v.id === 'jarvis') || VOICE_PERSONAS[3];
+  return VOICE_PERSONAS.find((v) => v.id === id) || VOICE_PERSONAS[0];
+};
 
 interface ThemeContextType {
   currentTheme: ThemePreset;
@@ -276,6 +359,7 @@ interface ThemeContextType {
   stopSpeaking: () => void;
   hasSeenVoiceCheckIn: boolean;
   setHasSeenVoiceCheckIn: (seen: boolean) => void;
+  applyVoiceCommand: (transcript: string) => { matched: boolean; feedback: string; actionType?: 'theme' | 'persona' | 'accent' | 'mute' };
 }
 
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
@@ -353,7 +437,7 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   const currentTheme = THEME_PRESETS.find((t) => t.id === themeId) || THEME_PRESETS[0];
   const accent = ACCENT_COLORS[accentColorId] || ACCENT_COLORS.amber;
-  const activeVoice = VOICE_PERSONAS.find((v) => v.id === activeVoiceId) || VOICE_PERSONAS[0];
+  const activeVoice = resolveVoicePersona(activeVoiceId);
 
   const setThemeId = (id: ThemeId) => {
     setThemeIdState(id);
@@ -396,6 +480,114 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const setHasSeenVoiceCheckIn = (seen: boolean) => {
     setHasSeenVoiceCheckInState(seen);
     sessionStorage.setItem(STORAGE_KEYS.CHECKIN_SEEN, String(seen));
+  };
+
+  // Voice Command Processor for Hands-Free Theme & Persona Switching
+  const applyVoiceCommand = (transcript: string): { matched: boolean; feedback: string; actionType?: 'theme' | 'persona' | 'accent' | 'mute' } => {
+    const text = transcript.toLowerCase().trim();
+
+    // 1. Check Voice Persona Switch Commands
+    if (text.includes('calm mentor') || text.includes('mentor voice') || text.includes('calm voice') || text.includes('oliver')) {
+      setActiveVoiceId('calm_mentor');
+      return {
+        matched: true,
+        actionType: 'persona',
+        feedback: 'Voice persona switched to Calm Mentor. Take a gentle breath with me.',
+      };
+    }
+    if (text.includes('empathetic friend') || text.includes('friend voice') || text.includes('empathetic voice') || text.includes('samantha')) {
+      setActiveVoiceId('empathetic_friend');
+      return {
+        matched: true,
+        actionType: 'persona',
+        feedback: 'Voice persona switched to Empathetic Friend. I am here with you.',
+      };
+    }
+    if (text.includes('analytical observer') || text.includes('analytical voice') || text.includes('observer voice') || text.includes('orion')) {
+      setActiveVoiceId('analytical_observer');
+      return {
+        matched: true,
+        actionType: 'persona',
+        feedback: 'Voice persona switched to Analytical Observer. Ready to examine insights.',
+      };
+    }
+    if (text.includes('jarvis') || text.includes('strategist voice') || text.includes('british voice')) {
+      setActiveVoiceId('jarvis');
+      return {
+        matched: true,
+        actionType: 'persona',
+        feedback: 'Voice persona switched to Jarvis. At your service for strategic reflection.',
+      };
+    }
+    if (text.includes('serene guide') || text.includes('meditative voice') || text.includes('peaceful voice') || text.includes('elena')) {
+      setActiveVoiceId('serene_guide');
+      return {
+        matched: true,
+        actionType: 'persona',
+        feedback: 'Voice persona switched to Serene Guide. Tranquil space restored.',
+      };
+    }
+
+    // 2. Check Theme Switch Commands
+    const themeTriggers: { keywords: string[]; id: ThemeId; name: string }[] = [
+      { keywords: ['obsidian', 'dark mode', 'night mode', 'midnight theme', 'dark theme'], id: 'obsidian', name: 'Obsidian Midnight' },
+      { keywords: ['sage', 'botanical', 'green theme', 'forest green'], id: 'sage', name: 'Botanical Sage' },
+      { keywords: ['amber', 'warm amber', 'stone theme', 'parchment'], id: 'amber', name: 'Warm Amber' },
+      { keywords: ['glacier', 'nordic', 'ice theme', 'arctic'], id: 'glacier', name: 'Nordic Glacier' },
+      { keywords: ['rose', 'terracotta and rose', 'pink theme', 'blush theme'], id: 'rose', name: 'Rose & Terracotta' },
+      { keywords: ['terracotta', 'sunset terracotta', 'tuscan', 'warm clay'], id: 'terracotta', name: 'Sunset Terracotta' },
+      { keywords: ['amethyst', 'cyber', 'purple theme', 'neon purple'], id: 'amethyst', name: 'Cyber Amethyst' },
+      { keywords: ['nebula', 'cosmic', 'starlight', 'galaxy theme'], id: 'nebula', name: 'Cosmic Nebula' },
+      { keywords: ['pine', 'deep forest', 'evergreen', 'woodland'], id: 'pine', name: 'Deep Forest Pine' },
+      { keywords: ['monochrome', 'monolith', 'grayscale', 'black and white', 'editorial'], id: 'monochrome', name: 'Minimalist Monolith' },
+    ];
+
+    for (const trigger of themeTriggers) {
+      if (trigger.keywords.some((kw) => text.includes(kw))) {
+        setThemeId(trigger.id);
+        return {
+          matched: true,
+          actionType: 'theme',
+          feedback: `Theme switched to ${trigger.name}.`,
+        };
+      }
+    }
+
+    // 3. Check Accent Color Commands
+    const accentTriggers: { keywords: string[]; id: AccentColorId; name: string }[] = [
+      { keywords: ['emerald accent', 'green accent', 'accent emerald'], id: 'emerald', name: 'Lush Emerald' },
+      { keywords: ['indigo accent', 'blue accent', 'accent indigo'], id: 'indigo', name: 'Cosmic Indigo' },
+      { keywords: ['amber accent', 'yellow accent', 'accent amber'], id: 'amber', name: 'Warm Amber' },
+      { keywords: ['rose accent', 'pink accent', 'accent rose'], id: 'rose', name: 'Velvet Rose' },
+      { keywords: ['violet accent', 'purple accent', 'accent violet'], id: 'violet', name: 'Electric Violet' },
+      { keywords: ['cyan accent', 'cyan color', 'accent cyan'], id: 'cyan', name: 'Glacier Cyan' },
+      { keywords: ['orange accent', 'sunset accent', 'accent orange'], id: 'orange', name: 'Sunset Orange' },
+      { keywords: ['gold accent', 'golden accent', 'accent gold'], id: 'gold', name: 'Radiant Gold' },
+      { keywords: ['teal accent', 'accent teal'], id: 'teal', name: 'Deep Teal' },
+    ];
+
+    for (const trigger of accentTriggers) {
+      if (trigger.keywords.some((kw) => text.includes(kw))) {
+        setAccentColorId(trigger.id);
+        return {
+          matched: true,
+          actionType: 'accent',
+          feedback: `Accent color updated to ${trigger.name}.`,
+        };
+      }
+    }
+
+    // 4. Mute / Unmute
+    if (text.includes('mute voice') || text.includes('be quiet') || text.includes('silence voice')) {
+      setIsVoiceMuted(true);
+      return { matched: true, actionType: 'mute', feedback: 'Voice synthesis muted.' };
+    }
+    if (text.includes('unmute voice') || text.includes('speak again') || text.includes('enable voice')) {
+      setIsVoiceMuted(false);
+      return { matched: true, actionType: 'mute', feedback: 'Voice synthesis unmuted.' };
+    }
+
+    return { matched: false, feedback: '' };
   };
 
   // Sync theme variables and classes to document body
@@ -492,6 +684,7 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         stopSpeaking,
         hasSeenVoiceCheckIn,
         setHasSeenVoiceCheckIn,
+        applyVoiceCommand,
       }}
     >
       {children}

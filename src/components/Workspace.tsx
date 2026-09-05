@@ -82,7 +82,7 @@ export const Workspace: React.FC<WorkspaceProps> = ({
   onOpenMoodInsights,
   onOpenVoiceGuide,
 }) => {
-  const { currentTheme, accentColorId } = useTheme();
+  const { currentTheme, accentColorId, activeVoice, activeVoiceId } = useTheme();
   const [inputText, setInputText] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
   const [isSummarizing, setIsSummarizing] = useState(false);
@@ -312,6 +312,7 @@ export const Workspace: React.FC<WorkspaceProps> = ({
           messages: updatedMessages.map((m) => ({ role: m.role, content: m.content })),
           mode: entry.mode,
           title: entry.title,
+          personaId: activeVoiceId,
         }),
       });
 

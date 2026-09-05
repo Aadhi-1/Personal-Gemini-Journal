@@ -13,8 +13,19 @@ import {
   X,
   Loader2,
   HeartHandshake,
+  Play,
+  Sun,
+  Sunset,
+  Moon,
+  Command,
 } from 'lucide-react';
-import { useTheme, ACCENT_COLORS } from '../theme/ThemeContext';
+import {
+  useTheme,
+  ACCENT_COLORS,
+  VOICE_PERSONAS,
+  VoicePersonaId,
+  VoicePersona,
+} from '../theme/ThemeContext';
 import { InteractionEntry, InteractionMessage, JournalCategory, JournalMode } from '../types';
 import { analyzeDistressOnDevice, sanitizeTextForAudioDLP } from '../crypto/guardrails';
 import { enclave } from '../crypto/workerClient';
@@ -31,6 +42,46 @@ interface VoiceCheckInModalProps {
 
 type CheckInStep = 'ask_preference' | 'listening_to_reflection' | 'generating' | 'completed';
 
+// Dynamic contextual greeting based on local time of day
+function getContextualGreeting(personaName: string) {
+  const hour = new Date().getHours();
+  if (hour >= 5 && hour < 12) {
+    return {
+      period: 'Morning Intention',
+      icon: Sun,
+      greeting: `Good morning! I am ${personaName}. Are you able to write your reflection today, or would you like me to listen and write it for you?`,
+      chips: [
+        '☀️ My primary intention for today',
+        '🌿 How I woke up feeling emotionally',
+        '⚡ One boundary I want to protect today',
+      ],
+    };
+  }
+  if (hour >= 12 && hour < 17) {
+    return {
+      period: 'Midday Mindful Pause',
+      icon: Sunset,
+      greeting: `Good afternoon! I am ${personaName}. How is your day flowing? Would you like to write your reflection, or shall I listen and capture it for you?`,
+      chips: [
+        '💡 What drained or energized me this morning',
+        '🤔 A friction or challenge I faced today',
+        '🧘 Taking a mindful breath to reset focus',
+      ],
+    };
+  }
+  return {
+    period: 'Evening Unwind & Debrief',
+    icon: Moon,
+    greeting: `Good evening. I am ${personaName}. Let's unburden your mind from today. Would you like to write yourself, or shall I listen and write it for you?`,
+    chips: [
+      '🌙 What went surprisingly well today',
+      '🌸 Something or someone I am grateful for',
+      '💭 A thought keeping my mind busy',
+      '🕊️ Releasing today’s tension before resting',
+    ],
+  };
+}
+
 export const VoiceCheckInModal: React.FC<VoiceCheckInModalProps> = ({
   isOpen,
   onClose,
@@ -43,6 +94,9 @@ export const VoiceCheckInModal: React.FC<VoiceCheckInModalProps> = ({
     currentTheme,
     accentColorId,
     activeVoice,
+    activeVoiceId,
+    setActiveVoiceId,
+    applyVoiceCommand,
     speakText,
     stopSpeaking,
     setHasSeenVoiceCheckIn,
@@ -56,8 +110,10 @@ export const VoiceCheckInModal: React.FC<VoiceCheckInModalProps> = ({
   const [generatedEntry, setGeneratedEntry] = useState<InteractionEntry | null>(null);
   const [spokenConfirmation, setSpokenConfirmation] = useState('');
   const [isSaving, setIsSaving] = useState(false);
+  const [auditioningVoiceId, setAuditioningVoiceId] = useState<string | null>(null);
 
   const recognitionRef = useRef<any>(null);
+  const contextual = getContextualGreeting(activeVoice.name);
 
   // Initialize Speech Recognition
   useEffect(() => {
@@ -124,13 +180,13 @@ export const VoiceCheckInModal: React.FC<VoiceCheckInModalProps> = ({
       recognitionRef.current = recognition;
     }
 
-    // Voice Prompt On Opening: Asks if user can write or wants the AI to write
-    const askPrompt = `Welcome back! Are you able to write your reflection today, or would you like me to listen and write it for you?`;
-    setStatusMessage(askPrompt);
+    // Dynamic Voice Prompt On Opening
+    const dynamicGreetingText = contextual.greeting;
+    setStatusMessage(dynamicGreetingText);
 
     const timer = setTimeout(() => {
       speakText(
-        askPrompt,
+        dynamicGreetingText,
         () => {},
         () => {
           // Once question completes, activate listening for their answer
@@ -168,11 +224,11 @@ export const VoiceCheckInModal: React.FC<VoiceCheckInModalProps> = ({
     } catch (e) {}
   };
 
-  // Natural Voice Command Routing in Initial Question Step
+  // Natural Voice Command Routing: checks for distress, voice commands (theme/persona/mute), and preference
   const handleVoiceInputRouting = (text: string) => {
     const lower = text.toLowerCase();
 
-    // Check for distress first
+    // 1. Check for distress first
     const distress = analyzeDistressOnDevice(text);
     if (distress.isDistressDetected) {
       stopListening();
@@ -182,6 +238,29 @@ export const VoiceCheckInModal: React.FC<VoiceCheckInModalProps> = ({
       return;
     }
 
+    // 2. Voice-Activated Theme & Persona Switching
+    const cmdResult = applyVoiceCommand(text);
+    if (cmdResult.matched) {
+      setStatusMessage(cmdResult.feedback);
+      speakText(cmdResult.feedback);
+      return;
+    }
+
+    // 3. Hands-free "Finish & Save" trigger while dictating
+    if (
+      step === 'listening_to_reflection' &&
+      (lower.includes('finish reflection') ||
+        lower.includes('save reflection') ||
+        lower.includes('done speaking') ||
+        lower.includes("i'm done") ||
+        lower.includes('im done') ||
+        lower.includes('write my reflection'))
+    ) {
+      handleFinishAndCraftReflection();
+      return;
+    }
+
+    // 4. Initial preference answering
     if (step === 'ask_preference') {
       // User indicates they cannot write or want voice assistance
       if (
@@ -222,13 +301,15 @@ export const VoiceCheckInModal: React.FC<VoiceCheckInModalProps> = ({
   };
 
   // User chooses "I can't write — listen & write for me"
-  const transitionToVoiceJournaling = () => {
+  const transitionToVoiceJournaling = (customStarterPrompt?: string) => {
     stopListening();
     setStep('listening_to_reflection');
     setSpokenTranscript('');
     setInterimText('');
 
-    const listenPrompt = `I am listening closely. Tell me whatever happened today, what you are feeling, or what is on your mind. Take all the time you need, and I will craft and write your complete reflection.`;
+    const listenPrompt = customStarterPrompt
+      ? `I'm listening. Tell me more about: "${customStarterPrompt}". Take all the time you need.`
+      : `I am listening closely. Tell me whatever happened today, what you are feeling, or what is on your mind. Take all the time you need, and I will craft and write your complete reflection.`;
     setStatusMessage(listenPrompt);
 
     speakText(
@@ -258,6 +339,25 @@ export const VoiceCheckInModal: React.FC<VoiceCheckInModalProps> = ({
       onSelectWriteMyself();
       onClose();
     }, 1500);
+  };
+
+  // Switch persona manually with immediate auditory confirmation
+  const handleSelectPersona = (p: VoicePersona) => {
+    setActiveVoiceId(p.id);
+    stopSpeaking();
+    speakText(`I am ${p.name}. I'll adopt this tone for your reflection.`);
+  };
+
+  // Audition a persona's sample voice
+  const handleAuditionVoice = (e: React.MouseEvent, p: VoicePersona) => {
+    e.stopPropagation();
+    stopSpeaking();
+    setAuditioningVoiceId(p.id);
+    speakText(
+      `Hello, I am ${p.name}. ${p.greetingSample}`,
+      () => setAuditioningVoiceId(p.id),
+      () => setAuditioningVoiceId(null)
+    );
   };
 
   // Submit Spoken Words to AI Endpoint to generate reflection
@@ -291,6 +391,7 @@ export const VoiceCheckInModal: React.FC<VoiceCheckInModalProps> = ({
         body: JSON.stringify({
           spokenText: fullSpoken,
           mode: 'reflection',
+          personaId: activeVoiceId,
         }),
       });
 
@@ -375,6 +476,8 @@ export const VoiceCheckInModal: React.FC<VoiceCheckInModalProps> = ({
 
   if (!isOpen) return null;
 
+  const PeriodIcon = contextual.icon;
+
   return (
     <div
       id="voice-checkin-modal-backdrop"
@@ -382,7 +485,7 @@ export const VoiceCheckInModal: React.FC<VoiceCheckInModalProps> = ({
     >
       <div
         id="voice-checkin-card"
-        className="w-full max-w-xl rounded-3xl shadow-2xl border overflow-hidden flex flex-col transition-all"
+        className="w-full max-w-xl max-h-[90vh] rounded-3xl shadow-2xl border overflow-hidden flex flex-col transition-all"
         style={{
           backgroundColor: currentTheme.bgSurface,
           borderColor: currentTheme.borderColor,
@@ -391,12 +494,12 @@ export const VoiceCheckInModal: React.FC<VoiceCheckInModalProps> = ({
       >
         {/* Header */}
         <div
-          className="px-6 py-4 border-b flex items-center justify-between"
+          className="px-6 py-3.5 border-b flex items-center justify-between"
           style={{ borderColor: currentTheme.borderColor }}
         >
           <div className="flex items-center gap-2.5">
             <div
-              className="w-9 h-9 rounded-2xl flex items-center justify-center text-white shadow-xs"
+              className="w-8 h-8 rounded-xl flex items-center justify-center text-white shadow-xs"
               style={{ backgroundColor: ACCENT_COLORS[accentColorId].hex }}
             >
               <Mic className="w-4 h-4 animate-pulse" />
@@ -405,17 +508,18 @@ export const VoiceCheckInModal: React.FC<VoiceCheckInModalProps> = ({
               <div className="flex items-center gap-2">
                 <h2 className="text-sm font-bold tracking-tight">Voice Reflection Concierge</h2>
                 <span
-                  className="text-[10px] px-2 py-0.5 rounded-full font-semibold"
+                  className="text-[10px] px-2 py-0.5 rounded-full font-semibold flex items-center gap-1"
                   style={{
                     backgroundColor: `${ACCENT_COLORS[accentColorId].hex}20`,
                     color: ACCENT_COLORS[accentColorId].hex,
                   }}
                 >
-                  {activeVoice.name} Companion
+                  <PeriodIcon className="w-3 h-3" />
+                  {contextual.period}
                 </span>
               </div>
               <p className="text-[11px]" style={{ color: currentTheme.textMuted }}>
-                Hands-free conversational check-in before you begin
+                Speaking with {activeVoice.name} • Hands-free journal check-in
               </p>
             </div>
           </div>
@@ -434,11 +538,60 @@ export const VoiceCheckInModal: React.FC<VoiceCheckInModalProps> = ({
           </button>
         </div>
 
+        {/* Persona Selector Carousel / Pill Bar */}
+        <div
+          className="px-6 py-2.5 border-b flex items-center gap-2 overflow-x-auto no-scrollbar"
+          style={{
+            borderColor: currentTheme.borderColor,
+            backgroundColor: `${ACCENT_COLORS[accentColorId].hex}05`,
+          }}
+        >
+          <span className="text-[10px] uppercase font-bold tracking-wider shrink-0" style={{ color: currentTheme.textMuted }}>
+            Persona:
+          </span>
+          {VOICE_PERSONAS.map((p) => {
+            const isSelected = activeVoiceId === p.id;
+            return (
+              <div
+                key={p.id}
+                onClick={() => handleSelectPersona(p)}
+                className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold shrink-0 cursor-pointer border transition-all ${
+                  isSelected
+                    ? 'border-transparent text-white shadow-xs'
+                    : 'hover:border-stone-400 opacity-80'
+                }`}
+                style={{
+                  backgroundColor: isSelected ? ACCENT_COLORS[accentColorId].hex : currentTheme.bgMain,
+                  borderColor: isSelected ? 'transparent' : currentTheme.borderColor,
+                }}
+              >
+                <span>{p.name}</span>
+                <span
+                  className="text-[9px] px-1 rounded font-normal opacity-90"
+                  style={{
+                    backgroundColor: isSelected ? 'rgba(255,255,255,0.2)' : `${ACCENT_COLORS[accentColorId].hex}20`,
+                  }}
+                >
+                  {p.tag || 'AI'}
+                </span>
+                <button
+                  type="button"
+                  title={`Preview ${p.name} voice`}
+                  onClick={(e) => handleAuditionVoice(e, p)}
+                  className="p-0.5 rounded-full hover:bg-black/10 transition-colors ml-0.5"
+                >
+                  <Play className={`w-3 h-3 ${auditioningVoiceId === p.id ? 'animate-pulse' : ''}`} />
+                </button>
+              </div>
+            );
+          })}
+        </div>
+
         {/* Content Area */}
-        <div className="p-6 space-y-6">
+        <div className="p-6 space-y-5 overflow-y-auto">
           {/* Wave & Listening Visualizer */}
           <div
-            className="rounded-2xl p-6 text-center border relative overflow-hidden flex flex-col items-center justify-center min-h-[160px]"
+            className="rounded-2xl p-5 text-center border relative overflow-hidden flex flex-col items-center justify-center min-h-[140px]"
             style={{
               borderColor: currentTheme.borderColor,
               backgroundColor: `${ACCENT_COLORS[accentColorId].hex}08`,
@@ -455,46 +608,46 @@ export const VoiceCheckInModal: React.FC<VoiceCheckInModalProps> = ({
             )}
 
             <div
-              className={`w-16 h-16 rounded-full flex items-center justify-center text-white mb-3 shadow-md transition-all ${
+              className={`w-14 h-14 rounded-full flex items-center justify-center text-white mb-2.5 shadow-md transition-all ${
                 isListening ? 'scale-110' : 'scale-100'
               }`}
               style={{ backgroundColor: ACCENT_COLORS[accentColorId].hex }}
             >
-              <Mic className="w-7 h-7" />
+              <Mic className="w-6 h-6" />
             </div>
 
             {/* Spoken Status Indicator */}
-            <p className="text-sm font-semibold max-w-md px-2 leading-relaxed">
-              {statusMessage || "Listening for your voice..."}
+            <p className="text-xs sm:text-sm font-semibold max-w-md px-2 leading-relaxed">
+              {statusMessage || 'Listening for your voice...'}
             </p>
 
             {isListening && (
               <span
-                className="inline-flex items-center gap-1.5 mt-2 text-[11px] font-bold px-3 py-1 rounded-full animate-pulse"
+                className="inline-flex items-center gap-1.5 mt-2 text-[10px] font-bold px-3 py-0.5 rounded-full animate-pulse"
                 style={{
                   backgroundColor: `${ACCENT_COLORS[accentColorId].hex}25`,
                   color: ACCENT_COLORS[accentColorId].hex,
                 }}
               >
-                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping" />
-                Listening now... Speak anytime
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping" />
+                Listening now... Speak freely
               </span>
             )}
           </div>
 
-          {/* STEP 1: Ask Preference */}
+          {/* STEP 1: Ask Preference with Dynamic Reflection Starters */}
           {step === 'ask_preference' && (
             <div className="space-y-4">
               <p className="text-center text-xs" style={{ color: currentTheme.textMuted }}>
-                You can answer by voice (say <em>"I can't write"</em> or <em>"I can write"</em>), or tap a button below:
+                Answer with voice (say <em>"I can't write"</em> or <em>"I'll write myself"</em>), or tap an option:
               </p>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 {/* Option: I Can't Write (Voice writes for them) */}
                 <button
                   type="button"
-                  onClick={transitionToVoiceJournaling}
-                  className="p-4 rounded-2xl border text-left transition-all hover:scale-[1.02] active:scale-[0.99] shadow-sm flex flex-col justify-between group"
+                  onClick={() => transitionToVoiceJournaling()}
+                  className="p-4 rounded-2xl border text-left transition-all hover:scale-[1.01] active:scale-[0.99] shadow-xs flex flex-col justify-between group"
                   style={{
                     backgroundColor: `${ACCENT_COLORS[accentColorId].hex}15`,
                     borderColor: ACCENT_COLORS[accentColorId].hex,
@@ -522,7 +675,7 @@ export const VoiceCheckInModal: React.FC<VoiceCheckInModalProps> = ({
                       I Can't Write — Listen & Write For Me
                     </h4>
                     <p className="text-[11px] opacity-80 leading-relaxed">
-                      Just speak freely. The AI will polish, structure, title, and write your complete reflection.
+                      Just speak your stream of consciousness. {activeVoice.name} will polish, structure, and save your reflection.
                     </p>
                   </div>
                 </button>
@@ -531,7 +684,7 @@ export const VoiceCheckInModal: React.FC<VoiceCheckInModalProps> = ({
                 <button
                   type="button"
                   onClick={handleChooseTypeMyself}
-                  className="p-4 rounded-2xl border text-left transition-all hover:scale-[1.02] active:scale-[0.99] shadow-sm flex flex-col justify-between group hover:border-stone-400"
+                  className="p-4 rounded-2xl border text-left transition-all hover:scale-[1.01] active:scale-[0.99] shadow-xs flex flex-col justify-between group hover:border-stone-400"
                   style={{
                     backgroundColor: currentTheme.bgSurface,
                     borderColor: currentTheme.borderColor,
@@ -550,13 +703,52 @@ export const VoiceCheckInModal: React.FC<VoiceCheckInModalProps> = ({
                   </div>
                   <div>
                     <h4 className="text-xs font-bold mb-1">
-                      I Can Write — Type In Workspace
+                      I Can Write — Open Workspace
                     </h4>
                     <p className="text-[11px] opacity-80 leading-relaxed" style={{ color: currentTheme.textMuted }}>
                       Jump directly to the editor to type your reflection notes and engage in multi-turn contemplation.
                     </p>
                   </div>
                 </button>
+              </div>
+
+              {/* Dynamic Reflection Prompt Starters */}
+              <div className="pt-2 border-t" style={{ borderColor: currentTheme.borderColor }}>
+                <div className="text-[10px] font-bold uppercase tracking-wider mb-2 flex items-center gap-1.5" style={{ color: currentTheme.textMuted }}>
+                  <Sparkles className="w-3 h-3" />
+                  <span>{contextual.period} Inspiration Prompts:</span>
+                </div>
+                <div className="flex flex-wrap gap-1.5">
+                  {contextual.chips.map((chip, idx) => (
+                    <button
+                      key={idx}
+                      type="button"
+                      onClick={() => transitionToVoiceJournaling(chip)}
+                      className="px-2.5 py-1 rounded-full text-[11px] border text-left transition-all hover:border-stone-400 hover:scale-[1.01]"
+                      style={{
+                        backgroundColor: currentTheme.bgMain,
+                        borderColor: currentTheme.borderColor,
+                      }}
+                    >
+                      {chip}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Voice Command Hint */}
+              <div
+                className="p-2.5 rounded-xl border text-[10px] flex items-center gap-2"
+                style={{
+                  backgroundColor: `${ACCENT_COLORS[accentColorId].hex}08`,
+                  borderColor: currentTheme.borderColor,
+                  color: currentTheme.textMuted,
+                }}
+              >
+                <Command className="w-3.5 h-3.5 shrink-0" />
+                <span>
+                  <strong>Voice command tip:</strong> You can say <em>"Switch to Terracotta theme"</em>, <em>"Activate Empathetic Friend"</em>, or <em>"Mute voice"</em> at any time!
+                </span>
               </div>
             </div>
           )}
@@ -566,7 +758,7 @@ export const VoiceCheckInModal: React.FC<VoiceCheckInModalProps> = ({
             <div className="space-y-4">
               {/* Spoken transcript viewer */}
               <div
-                className="p-4 rounded-xl border min-h-[110px] max-h-[180px] overflow-y-auto text-xs leading-relaxed space-y-1"
+                className="p-4 rounded-xl border min-h-[110px] max-h-[170px] overflow-y-auto text-xs leading-relaxed space-y-1"
                 style={{
                   borderColor: currentTheme.borderColor,
                   backgroundColor: currentTheme.bgMain,
@@ -577,7 +769,7 @@ export const VoiceCheckInModal: React.FC<VoiceCheckInModalProps> = ({
                   <span>{spokenTranscript.split(/\s+/).filter(Boolean).length} words</span>
                 </div>
                 {spokenTranscript ? (
-                  <p className="font-medium text-stone-800 dark:text-stone-100">{spokenTranscript}</p>
+                  <p className="font-medium">{spokenTranscript}</p>
                 ) : (
                   <p className="italic opacity-60">Start speaking... Your thoughts will appear here in real time.</p>
                 )}
@@ -588,6 +780,26 @@ export const VoiceCheckInModal: React.FC<VoiceCheckInModalProps> = ({
                 )}
               </div>
 
+              {/* Prompt chips while dictating */}
+              <div className="flex flex-wrap gap-1.5">
+                {contextual.chips.map((chip, idx) => (
+                  <button
+                    key={idx}
+                    type="button"
+                    onClick={() => {
+                      setSpokenTranscript((prev) => (prev ? `${prev} ${chip}` : chip));
+                    }}
+                    className="px-2 py-0.5 rounded-full text-[10px] border opacity-80 hover:opacity-100 transition-opacity"
+                    style={{
+                      backgroundColor: currentTheme.bgSurface,
+                      borderColor: currentTheme.borderColor,
+                    }}
+                  >
+                    + {chip}
+                  </button>
+                ))}
+              </div>
+
               {/* Controls */}
               <div className="flex items-center justify-between gap-3">
                 <button
@@ -596,7 +808,7 @@ export const VoiceCheckInModal: React.FC<VoiceCheckInModalProps> = ({
                     if (isListening) stopListening();
                     else startListening();
                   }}
-                  className="px-4 py-2.5 rounded-xl border text-xs font-semibold flex items-center gap-2 hover:bg-stone-100 transition-colors"
+                  className="px-4 py-2.5 rounded-xl border text-xs font-semibold flex items-center gap-2 hover:bg-stone-100 dark:hover:bg-stone-800 transition-colors"
                   style={{ borderColor: currentTheme.borderColor }}
                 >
                   {isListening ? (
@@ -620,6 +832,10 @@ export const VoiceCheckInModal: React.FC<VoiceCheckInModalProps> = ({
                   <Sparkles className="w-4 h-4" /> Finish & Write My Reflection
                 </button>
               </div>
+
+              <p className="text-center text-[10px]" style={{ color: currentTheme.textMuted }}>
+                Tip: Say <em>"Finish reflection"</em> or tap the button when you're done speaking.
+              </p>
             </div>
           )}
 
@@ -628,7 +844,7 @@ export const VoiceCheckInModal: React.FC<VoiceCheckInModalProps> = ({
             <div className="py-8 text-center space-y-3">
               <Loader2 className="w-8 h-8 animate-spin mx-auto" style={{ color: ACCENT_COLORS[accentColorId].hex }} />
               <p className="text-xs font-semibold">
-                Polishing speech disfluencies, structuring themes, and encrypting in military-grade enclave...
+                Synthesizing speech with {activeVoice.name}, structuring themes, and securing in Web Worker enclave...
               </p>
             </div>
           )}
@@ -645,9 +861,9 @@ export const VoiceCheckInModal: React.FC<VoiceCheckInModalProps> = ({
               >
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-bold text-emerald-600 flex items-center gap-1.5">
-                    <CheckCircle2 className="w-4 h-4" /> Reflection Written & Secured
+                    <CheckCircle2 className="w-4 h-4" /> Reflection Written & Secured by {activeVoice.name}
                   </span>
-                  <span className="text-xs px-2 py-0.5 rounded-full font-medium bg-white/80 border border-stone-200 shadow-2xs">
+                  <span className="text-xs px-2 py-0.5 rounded-full font-medium bg-white/80 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 shadow-2xs">
                     {generatedEntry.mood}
                   </span>
                 </div>
@@ -659,7 +875,7 @@ export const VoiceCheckInModal: React.FC<VoiceCheckInModalProps> = ({
                 </p>
 
                 {generatedEntry.keyInsights && generatedEntry.keyInsights.length > 0 && (
-                  <div className="pt-2 border-t border-black/5 text-[11px] space-y-1">
+                  <div className="pt-2 border-t border-black/5 dark:border-white/5 text-[11px] space-y-1">
                     <span className="font-bold uppercase tracking-wider text-[10px]" style={{ color: currentTheme.textMuted }}>
                       Key Takeaways:
                     </span>
@@ -681,7 +897,7 @@ export const VoiceCheckInModal: React.FC<VoiceCheckInModalProps> = ({
                     setSpokenTranscript('');
                     startListening();
                   }}
-                  className="px-4 py-2.5 rounded-xl border text-xs font-semibold hover:bg-stone-50 flex items-center gap-1.5"
+                  className="px-4 py-2.5 rounded-xl border text-xs font-semibold hover:bg-stone-50 dark:hover:bg-stone-800 flex items-center gap-1.5"
                   style={{ borderColor: currentTheme.borderColor }}
                 >
                   <RotateCcw className="w-3.5 h-3.5" /> Record Another
@@ -703,3 +919,4 @@ export const VoiceCheckInModal: React.FC<VoiceCheckInModalProps> = ({
     </div>
   );
 };
+
