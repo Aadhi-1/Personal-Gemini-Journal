@@ -30,9 +30,11 @@ import { InteractionEntry } from '../types';
 import {
   createEncryptedBackup,
   createSovereignJsonExport,
+  createMarkdownExport,
   triggerFileDownload,
   verifyAndDecryptBackup,
   SovereignExportResult,
+  ExportSecurityOptions,
 } from '../crypto/secureExport';
 
 interface SecurityModalProps {
@@ -59,9 +61,12 @@ export const SecurityModal: React.FC<SecurityModalProps> = ({
   const [backupPassphrase, setBackupPassphrase] = useState('');
   const [showPassphrase, setShowPassphrase] = useState(false);
   const [includeLocations, setIncludeLocations] = useState(true);
+  const [includeStickers, setIncludeStickers] = useState(true);
+  const [applyDlpScrubbing, setApplyDlpScrubbing] = useState(true);
+  const [lastDlpCount, setLastDlpCount] = useState(0);
   const [isExporting, setIsExporting] = useState(false);
   const [lastExportResult, setLastExportResult] = useState<SovereignExportResult | null>(null);
-  const [exportType, setExportType] = useState<'encrypted' | 'plain' | null>(null);
+  const [exportType, setExportType] = useState<'encrypted' | 'plain' | 'markdown' | null>(null);
   const [copiedChecksum, setCopiedChecksum] = useState(false);
 
   // Verification & Decryption Tool State
@@ -102,13 +107,19 @@ export const SecurityModal: React.FC<SecurityModalProps> = ({
   const handleExportEncrypted = async () => {
     try {
       setIsExporting(true);
-      const { envelope, result } = await createEncryptedBackup(
+      const options: ExportSecurityOptions = {
+        includeLocations,
+        includeStickers,
+        applyDlpScrubbing,
+      };
+      const { envelope, result, dlpRedactions } = await createEncryptedBackup(
         entries,
         backupPassphrase,
-        includeLocations
+        options
       );
       triggerFileDownload(JSON.stringify(envelope, null, 2), result.fileName);
       setLastExportResult(result);
+      setLastDlpCount(dlpRedactions);
       setExportType('encrypted');
       setLogs(getSecurityAuditLogs());
     } catch (err) {
@@ -122,13 +133,41 @@ export const SecurityModal: React.FC<SecurityModalProps> = ({
   const handleExportPlainJson = async () => {
     try {
       setIsExporting(true);
-      const { data, result } = await createSovereignJsonExport(entries, includeLocations);
+      const options: ExportSecurityOptions = {
+        includeLocations,
+        includeStickers,
+        applyDlpScrubbing,
+      };
+      const { data, result, dlpRedactions } = await createSovereignJsonExport(entries, options);
       triggerFileDownload(JSON.stringify(data, null, 2), result.fileName);
       setLastExportResult(result);
+      setLastDlpCount(dlpRedactions);
       setExportType('plain');
       setLogs(getSecurityAuditLogs());
     } catch (err) {
       console.error('Failed to export plain sovereign json:', err);
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
+  // Handle Markdown Diary Download
+  const handleExportMarkdown = async () => {
+    try {
+      setIsExporting(true);
+      const options: ExportSecurityOptions = {
+        includeLocations,
+        includeStickers,
+        applyDlpScrubbing,
+      };
+      const { markdown, result, dlpRedactions } = await createMarkdownExport(entries, options);
+      triggerFileDownload(markdown, result.fileName, 'text/markdown');
+      setLastExportResult(result);
+      setLastDlpCount(dlpRedactions);
+      setExportType('markdown');
+      setLogs(getSecurityAuditLogs());
+    } catch (err) {
+      console.error('Failed to export markdown diary:', err);
     } finally {
       setIsExporting(false);
     }
@@ -306,44 +345,115 @@ export const SecurityModal: React.FC<SecurityModalProps> = ({
                 </p>
               </div>
 
-              <div className="flex items-center gap-2 pt-1">
-                <input
-                  id="include-locations-checkbox"
-                  type="checkbox"
-                  checked={includeLocations}
-                  onChange={(e) => setIncludeLocations(e.target.checked)}
-                  className="rounded text-emerald-600 focus:ring-emerald-500 h-4 w-4"
-                />
-                <label htmlFor="include-locations-checkbox" className="text-xs text-stone-700 cursor-pointer">
-                  Include pinned Google Maps geolocations and place metadata in the backup
-                </label>
+              {/* Security & Privacy Safeguards */}
+              <div className="pt-2 border-t border-stone-200/80 space-y-2">
+                <div className="text-[11px] font-bold text-stone-700 uppercase tracking-wider">
+                  Privacy & Data Sanitization Options
+                </div>
+
+                {/* DLP Scrubbing Switch */}
+                <div className="flex items-start gap-2.5 p-2.5 rounded-xl bg-amber-50/70 border border-amber-200/70">
+                  <input
+                    id="dlp-scrubbing-checkbox"
+                    type="checkbox"
+                    checked={applyDlpScrubbing}
+                    onChange={(e) => setApplyDlpScrubbing(e.target.checked)}
+                    className="mt-0.5 rounded text-amber-600 focus:ring-amber-500 h-4 w-4 shrink-0"
+                  />
+                  <div className="text-xs">
+                    <label htmlFor="dlp-scrubbing-checkbox" className="font-semibold text-stone-900 cursor-pointer flex items-center gap-1.5">
+                      <ShieldCheck className="w-3.5 h-3.5 text-amber-600" />
+                      <span>DLP Privacy Sanitization (Recommended)</span>
+                    </label>
+                    <p className="text-[11px] text-stone-600 mt-0.5">
+                      Automatically scrubs phone numbers, emails, home addresses, SSNs, and credit cards from exported reflection text using on-device DLP regex guards.
+                    </p>
+                  </div>
+                </div>
+
+                {/* Locations Switch */}
+                <div className="flex items-center gap-2 px-1">
+                  <input
+                    id="include-locations-checkbox"
+                    type="checkbox"
+                    checked={includeLocations}
+                    onChange={(e) => setIncludeLocations(e.target.checked)}
+                    className="rounded text-emerald-600 focus:ring-emerald-500 h-4 w-4"
+                  />
+                  <label htmlFor="include-locations-checkbox" className="text-xs text-stone-700 cursor-pointer">
+                    Include pinned Google Maps geolocations and place metadata in the export
+                  </label>
+                </div>
+
+                {/* Stickers Switch */}
+                <div className="flex items-center gap-2 px-1">
+                  <input
+                    id="include-stickers-checkbox"
+                    type="checkbox"
+                    checked={includeStickers}
+                    onChange={(e) => setIncludeStickers(e.target.checked)}
+                    className="rounded text-emerald-600 focus:ring-emerald-500 h-4 w-4"
+                  />
+                  <label htmlFor="include-stickers-checkbox" className="text-xs text-stone-700 cursor-pointer">
+                    Include journal stickers, mood tags, and milestone badges
+                  </label>
+                </div>
               </div>
 
-              {/* Action Buttons */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-2">
-                {/* Primary Encrypted Export */}
-                <button
-                  id="download-encrypted-backup-btn"
-                  type="button"
-                  disabled={isExporting}
-                  onClick={handleExportEncrypted}
-                  className="flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-semibold shadow-xs transition-all active:scale-98 disabled:opacity-50"
-                >
-                  <Download className="w-4 h-4" />
-                  <span>{isExporting ? 'Packaging...' : 'Download Encrypted Backup (.enc.json)'}</span>
-                </button>
+              {/* Action Buttons: 3 Sovereign Export Formats */}
+              <div className="pt-2">
+                <div className="text-[11px] font-bold text-stone-700 uppercase tracking-wider mb-2">
+                  Select Sovereign Export Format
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                  {/* Primary Encrypted Export */}
+                  <button
+                    id="download-encrypted-backup-btn"
+                    type="button"
+                    disabled={isExporting}
+                    onClick={handleExportEncrypted}
+                    className="flex flex-col items-center justify-center p-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs transition-all active:scale-98 disabled:opacity-50 text-center group"
+                  >
+                    <div className="flex items-center gap-1.5 font-semibold text-xs mb-0.5">
+                      <Lock className="w-3.5 h-3.5 text-emerald-200" />
+                      <span>Encrypted Vault</span>
+                    </div>
+                    <span className="text-[10px] text-emerald-100 font-mono">.enc.json</span>
+                    <span className="text-[9px] text-emerald-200 mt-1 opacity-90">AES-256-GCM + PBKDF2</span>
+                  </button>
 
-                {/* Plain JSON Sovereign Archive */}
-                <button
-                  id="download-plain-sovereign-json-btn"
-                  type="button"
-                  disabled={isExporting}
-                  onClick={handleExportPlainJson}
-                  className="flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl bg-stone-900 hover:bg-stone-800 text-stone-100 font-semibold transition-all active:scale-98 disabled:opacity-50"
-                >
-                  <FileDown className="w-4 h-4 text-stone-300" />
-                  <span>Download Sovereign JSON (.json)</span>
-                </button>
+                  {/* Plain JSON Sovereign Archive */}
+                  <button
+                    id="download-plain-sovereign-json-btn"
+                    type="button"
+                    disabled={isExporting}
+                    onClick={handleExportPlainJson}
+                    className="flex flex-col items-center justify-center p-3 rounded-xl bg-stone-900 hover:bg-stone-800 text-stone-100 transition-all active:scale-98 disabled:opacity-50 text-center group"
+                  >
+                    <div className="flex items-center gap-1.5 font-semibold text-xs mb-0.5">
+                      <FileDown className="w-3.5 h-3.5 text-stone-300" />
+                      <span>Sovereign JSON</span>
+                    </div>
+                    <span className="text-[10px] text-stone-400 font-mono">.json</span>
+                    <span className="text-[9px] text-stone-400 mt-1 opacity-90">Portable standard archive</span>
+                  </button>
+
+                  {/* Formatted Markdown Diary */}
+                  <button
+                    id="download-markdown-diary-btn"
+                    type="button"
+                    disabled={isExporting}
+                    onClick={handleExportMarkdown}
+                    className="flex flex-col items-center justify-center p-3 rounded-xl bg-indigo-700 hover:bg-indigo-800 text-white shadow-xs transition-all active:scale-98 disabled:opacity-50 text-center group"
+                  >
+                    <div className="flex items-center gap-1.5 font-semibold text-xs mb-0.5">
+                      <FileText className="w-3.5 h-3.5 text-indigo-200" />
+                      <span>Markdown Diary</span>
+                    </div>
+                    <span className="text-[10px] text-indigo-200 font-mono">.md</span>
+                    <span className="text-[9px] text-indigo-200 mt-1 opacity-90">Human-readable + Stickers</span>
+                  </button>
+                </div>
               </div>
             </div>
 
@@ -351,24 +461,31 @@ export const SecurityModal: React.FC<SecurityModalProps> = ({
             {lastExportResult && (
               <div className="p-4 rounded-2xl bg-emerald-50 border border-emerald-200 animate-fade-in">
                 <div className="flex items-center justify-between mb-1.5">
-                  <div className="flex items-center gap-2 text-emerald-900 font-semibold">
+                  <div className="flex items-center gap-2 text-emerald-900 font-semibold text-xs">
                     <CheckCircle2 className="w-4 h-4 text-emerald-600" />
                     <span>
                       {exportType === 'encrypted'
-                        ? 'Encrypted Backup Downloaded'
-                        : 'Sovereign Archive Downloaded'}
+                        ? 'Encrypted Backup (.enc.json) Downloaded'
+                        : exportType === 'markdown'
+                        ? 'Sanitized Markdown Diary (.md) Downloaded'
+                        : 'Sovereign Archive (.json) Downloaded'}
                     </span>
                   </div>
                   <span className="text-[10px] font-mono text-emerald-700 font-bold">
                     {lastExportResult.sizeFormatted}
                   </span>
                 </div>
-                <div className="text-[11px] text-emerald-800 mb-2 font-mono">
+                <div className="text-[11px] text-emerald-800 mb-1.5 font-mono">
                   File: <span className="font-bold">{lastExportResult.fileName}</span>
                 </div>
+                {lastDlpCount > 0 && (
+                  <div className="text-[11px] text-amber-800 bg-amber-100/70 px-2 py-1 rounded-lg mb-2 font-medium">
+                    🛡️ DLP Sanitizer redacted {lastDlpCount} sensitive information tokens before saving.
+                  </div>
+                )}
                 <div className="p-2 rounded-xl bg-emerald-100/70 border border-emerald-300/50 flex items-center justify-between gap-2">
                   <div className="truncate font-mono text-[10px] text-emerald-950">
-                    SHA-256: {lastExportResult.checksum}
+                    SHA-256 Checksum: {lastExportResult.checksum}
                   </div>
                   <button
                     type="button"

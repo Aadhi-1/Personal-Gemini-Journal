@@ -372,6 +372,7 @@ export default function App() {
                 onTriggerSafeMode={handleTriggerSafeMode}
                 onOpenMoodInsights={() => setIsMoodInsightsOpen(true)}
                 onOpenVoiceGuide={() => setIsVoiceGuideOpen(true)}
+                onOpenSecurityModal={() => setIsSecurityModalOpen(true)}
               />
             ) : (
               <div className="flex-1 flex items-center justify-center p-8 text-center bg-white">

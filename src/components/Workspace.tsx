@@ -24,6 +24,12 @@ import {
   BarChart3,
   HelpCircle,
   Bell,
+  Timer,
+  Tag,
+  SmilePlus,
+  Play,
+  Square,
+  Check,
 } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import { APIProvider, Map, AdvancedMarker, Pin } from '@vis.gl/react-google-maps';
@@ -34,11 +40,21 @@ import {
   JournalMode,
   JournalLocation,
   MOOD_OPTIONS,
+  JOURNAL_STICKERS,
+  JournalSticker,
 } from '../types';
 import { LocationPickerModal } from './LocationPickerModal';
+import { StickerPickerModal } from './StickerPickerModal';
+import { ReflectionTimer } from './ReflectionTimer';
 import { analyzeDistressOnDevice, sanitizeTextForAudioDLP } from '../crypto/guardrails';
 import { enclave } from '../crypto/workerClient';
-import { useTheme, ACCENT_COLORS } from '../theme/ThemeContext';
+import {
+  useTheme,
+  ACCENT_COLORS,
+  VOICE_PERSONAS,
+  VoicePersonaId,
+  VoicePersona,
+} from '../theme/ThemeContext';
 
 interface WorkspaceProps {
   entry: InteractionEntry;
@@ -48,6 +64,7 @@ interface WorkspaceProps {
   onTriggerSafeMode?: (phrase?: string) => void;
   onOpenMoodInsights?: () => void;
   onOpenVoiceGuide?: () => void;
+  onOpenSecurityModal?: () => void;
 }
 
 const MODES: { id: JournalMode; label: string; description: string }[] = [
@@ -81,8 +98,17 @@ export const Workspace: React.FC<WorkspaceProps> = ({
   onTriggerSafeMode,
   onOpenMoodInsights,
   onOpenVoiceGuide,
+  onOpenSecurityModal,
 }) => {
-  const { currentTheme, accentColorId, activeVoice, activeVoiceId } = useTheme();
+  const {
+    currentTheme,
+    accentColorId,
+    activeVoice,
+    activeVoiceId,
+    setActiveVoiceId,
+    speakText,
+    stopSpeaking,
+  } = useTheme();
   const [inputText, setInputText] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
   const [isSummarizing, setIsSummarizing] = useState(false);
@@ -90,6 +116,10 @@ export const Workspace: React.FC<WorkspaceProps> = ({
   const [isSummaryExpanded, setIsSummaryExpanded] = useState(true);
   const [copiedExport, setCopiedExport] = useState(false);
   const [isLocationModalOpen, setIsLocationModalOpen] = useState(false);
+  const [isStickerModalOpen, setIsStickerModalOpen] = useState(false);
+  const [isTimerVisible, setIsTimerVisible] = useState(false);
+  const [isPersonaMenuOpen, setIsPersonaMenuOpen] = useState(false);
+  const [auditioningVoiceId, setAuditioningVoiceId] = useState<string | null>(null);
   const [isMapExpanded, setIsMapExpanded] = useState(false);
   const [speakingMessageId, setSpeakingMessageId] = useState<string | null>(null);
   const [autosaveState, setAutosaveState] = useState<'saved' | 'saving' | 'error'>('saved');
@@ -101,6 +131,22 @@ export const Workspace: React.FC<WorkspaceProps> = ({
   const [isSendingAlert, setIsSendingAlert] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const personaMenuRef = useRef<HTMLDivElement>(null);
+
+  // Close persona menu on click outside
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (personaMenuRef.current && !personaMenuRef.current.contains(e.target as Node)) {
+        setIsPersonaMenuOpen(false);
+      }
+    }
+    if (isPersonaMenuOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [isPersonaMenuOpen]);
 
   // Dispatch external notifications for parsed reflection (Slack, Discord, Email)
   const dispatchNotificationForEntry = async (
@@ -165,7 +211,7 @@ export const Workspace: React.FC<WorkspaceProps> = ({
     }
   };
 
-  // Audio DLP Speech Playback
+  // Audio DLP Speech Playback with active voice persona tuning
   const handleSpeakMessage = (messageId: string, text: string) => {
     if (typeof window === 'undefined' || !window.speechSynthesis) return;
 
@@ -178,11 +224,107 @@ export const Workspace: React.FC<WorkspaceProps> = ({
     window.speechSynthesis.cancel();
     const { cleanText } = sanitizeTextForAudioDLP(text);
     const utterance = new SpeechSynthesisUtterance(cleanText);
-    utterance.rate = 0.95;
+    utterance.rate = activeVoice.rate;
+    utterance.pitch = activeVoice.pitch;
+
+    // Pick best system voice matching persona preferences
+    const availableVoices = window.speechSynthesis.getVoices();
+    if (availableVoices && availableVoices.length > 0) {
+      let matchedVoice: SpeechSynthesisVoice | undefined;
+      for (const pref of activeVoice.preferredVoiceNames) {
+        matchedVoice = availableVoices.find(
+          (v) =>
+            v.name.toLowerCase().includes(pref.toLowerCase()) ||
+            v.lang.toLowerCase().includes(pref.toLowerCase())
+        );
+        if (matchedVoice) break;
+      }
+      if (matchedVoice) {
+        utterance.voice = matchedVoice;
+      }
+    }
+
     utterance.onend = () => setSpeakingMessageId(null);
     utterance.onerror = () => setSpeakingMessageId(null);
     setSpeakingMessageId(messageId);
     window.speechSynthesis.speak(utterance);
+  };
+
+  // Audition Voice Persona sample
+  const handleAuditionPersona = (e: React.MouseEvent, p: VoicePersona) => {
+    e.stopPropagation();
+    if (typeof window === 'undefined' || !window.speechSynthesis) return;
+
+    if (auditioningVoiceId === p.id) {
+      window.speechSynthesis.cancel();
+      setAuditioningVoiceId(null);
+      return;
+    }
+
+    window.speechSynthesis.cancel();
+    setAuditioningVoiceId(p.id);
+
+    const utterance = new SpeechSynthesisUtterance(p.greetingSample);
+    utterance.rate = p.rate;
+    utterance.pitch = p.pitch;
+
+    const availableVoices = window.speechSynthesis.getVoices();
+    if (availableVoices && availableVoices.length > 0) {
+      let matchedVoice: SpeechSynthesisVoice | undefined;
+      for (const pref of p.preferredVoiceNames) {
+        matchedVoice = availableVoices.find(
+          (v) =>
+            v.name.toLowerCase().includes(pref.toLowerCase()) ||
+            v.lang.toLowerCase().includes(pref.toLowerCase())
+        );
+        if (matchedVoice) break;
+      }
+      if (matchedVoice) {
+        utterance.voice = matchedVoice;
+      }
+    }
+
+    utterance.onend = () => setAuditioningVoiceId(null);
+    utterance.onerror = () => setAuditioningVoiceId(null);
+    window.speechSynthesis.speak(utterance);
+  };
+
+  // Handle Sticker Toggle
+  const handleToggleSticker = async (stickerId: string) => {
+    const current = entry.stickers || [];
+    const updated = current.includes(stickerId)
+      ? current.filter((s) => s !== stickerId)
+      : [...current, stickerId];
+
+    await executeAutosave({
+      ...entry,
+      stickers: updated,
+      updatedAt: new Date().toISOString(),
+    });
+  };
+
+  // Handle Sticker Removal
+  const handleRemoveSticker = async (stickerId: string) => {
+    const current = entry.stickers || [];
+    const updated = current.filter((s) => s !== stickerId);
+    await executeAutosave({
+      ...entry,
+      stickers: updated,
+      updatedAt: new Date().toISOString(),
+    });
+  };
+
+  // Handle Reflection Timer Completion
+  const handleTimerCompleted = async (awardedStickerId?: string) => {
+    if (!awardedStickerId) return;
+    const current = entry.stickers || [];
+    if (!current.includes(awardedStickerId)) {
+      await executeAutosave({
+        ...entry,
+        stickers: [...current, awardedStickerId],
+        updatedAt: new Date().toISOString(),
+      });
+    }
   };
 
   // Fetch backend Maps API key if not in client bundle
@@ -543,6 +685,97 @@ export const Workspace: React.FC<WorkspaceProps> = ({
               )}
             </div>
 
+            {/* Reflection Timer Toggle Button */}
+            <button
+              id="workspace-reflection-timer-button"
+              type="button"
+              onClick={() => setIsTimerVisible(!isTimerVisible)}
+              className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all shadow-2xs ${
+                isTimerVisible
+                  ? 'bg-amber-100 text-amber-900 border border-amber-300 font-semibold'
+                  : 'text-stone-700 hover:text-stone-900 bg-white border border-stone-300 hover:border-amber-400'
+              }`}
+              title="Toggle Pomodoro-style uninterrupted reflection timer"
+            >
+              <Timer className="w-3.5 h-3.5 text-amber-600" />
+              <span className="hidden md:inline">Reflection Timer</span>
+            </button>
+
+            {/* Multi-Voice Persona Selector Dropdown */}
+            <div className="relative" ref={personaMenuRef}>
+              <button
+                id="workspace-persona-select-btn"
+                type="button"
+                onClick={() => setIsPersonaMenuOpen(!isPersonaMenuOpen)}
+                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium text-stone-800 bg-white border border-stone-300 hover:border-stone-400 transition-all shadow-2xs"
+                title={`Active AI Persona: ${activeVoice.name}. Click to change voice persona tone.`}
+              >
+                <Volume2 className="w-3.5 h-3.5 text-amber-600" />
+                <span className="hidden sm:inline font-semibold">{activeVoice.name}</span>
+                <ChevronDown className="w-3 h-3 text-stone-400" />
+              </button>
+
+              {isPersonaMenuOpen && (
+                <div className="absolute right-0 mt-1.5 w-72 rounded-2xl bg-white border border-stone-200 shadow-xl py-2 z-50 animate-fade-in text-stone-900">
+                  <div className="px-3 py-1.5 border-b border-stone-100 flex items-center justify-between">
+                    <span className="text-[10px] uppercase font-bold text-stone-600 tracking-wider">
+                      AI Voice Personas
+                    </span>
+                    <span className="text-[10px] text-amber-600 font-semibold">Gemini Prompt Tuned</span>
+                  </div>
+
+                  <div className="max-h-80 overflow-y-auto p-1.5 space-y-1">
+                    {VOICE_PERSONAS.map((p) => {
+                      const isSelected = activeVoiceId === p.id;
+                      const isAuditioning = auditioningVoiceId === p.id;
+                      return (
+                        <div
+                          key={p.id}
+                          onClick={() => {
+                            setActiveVoiceId(p.id);
+                            setIsPersonaMenuOpen(false);
+                          }}
+                          className={`p-2.5 rounded-xl transition-all cursor-pointer flex items-start justify-between gap-2 ${
+                            isSelected
+                              ? 'bg-amber-50/80 border border-amber-300/80'
+                              : 'hover:bg-stone-50 border border-transparent'
+                          }`}
+                        >
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-1.5">
+                              <span className="font-bold text-xs text-stone-900 truncate">{p.name}</span>
+                              <span className="text-[9px] px-1.5 py-0.5 rounded bg-stone-100 text-stone-600 font-medium shrink-0">
+                                {p.tag}
+                              </span>
+                              {isSelected && (
+                                <Check className="w-3.5 h-3.5 text-amber-600 ml-auto shrink-0" />
+                              )}
+                            </div>
+                            <p className="text-[11px] text-stone-500 line-clamp-2 mt-0.5 leading-relaxed">
+                              {p.description}
+                            </p>
+                          </div>
+
+                          <button
+                            type="button"
+                            title={`Audition sample greeting for ${p.name}`}
+                            onClick={(e) => handleAuditionPersona(e, p)}
+                            className={`p-1.5 rounded-lg shrink-0 transition-colors ${
+                              isAuditioning
+                                ? 'bg-amber-500 text-white animate-pulse'
+                                : 'text-stone-400 hover:text-amber-700 hover:bg-amber-100'
+                            }`}
+                          >
+                            {isAuditioning ? <Square className="w-3.5 h-3.5" /> : <Play className="w-3.5 h-3.5" />}
+                          </button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+            </div>
+
             {onOpenMoodInsights && (
               <button
                 id="workspace-mood-insights-button"
@@ -552,7 +785,7 @@ export const Workspace: React.FC<WorkspaceProps> = ({
                 title="Open Mood Insights (D3.js Local Enclave Visualization)"
               >
                 <BarChart3 className="w-3.5 h-3.5 text-amber-600" />
-                <span className="hidden md:inline">Mood Insights</span>
+                <span className="hidden lg:inline">Mood Insights</span>
               </button>
             )}
 
@@ -565,7 +798,7 @@ export const Workspace: React.FC<WorkspaceProps> = ({
                 title="Voice Command Guide & Natural Language Reference"
               >
                 <HelpCircle className="w-3.5 h-3.5 text-stone-500" />
-                <span className="hidden lg:inline">Voice Guide</span>
+                <span className="hidden xl:inline">Voice Guide</span>
               </button>
             )}
 
@@ -592,28 +825,41 @@ export const Workspace: React.FC<WorkspaceProps> = ({
             >
               <Sparkles className={`w-3.5 h-3.5 text-amber-600 ${isSummarizing ? 'animate-spin' : ''}`} />
               <span className="hidden sm:inline">
-                {isSummarizing ? 'Summarizing...' : 'Summarize Session'}
+                {isSummarizing ? 'Summarizing...' : 'Summarize'}
               </span>
             </button>
 
-            <button
-              id="export-markdown-button"
-              type="button"
-              onClick={handleExportMarkdown}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-stone-700 hover:text-stone-900 bg-white border border-stone-300 hover:border-stone-400 transition-all shadow-2xs"
-              title="Download full reflection in Markdown format"
-            >
-              {copiedExport ? (
-                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
-              ) : (
-                <Download className="w-3.5 h-3.5 text-stone-500" />
-              )}
-              <span className="hidden sm:inline">{copiedExport ? 'Downloaded' : 'Export'}</span>
-            </button>
+            {onOpenSecurityModal ? (
+              <button
+                id="workspace-security-vault-export-btn"
+                type="button"
+                onClick={onOpenSecurityModal}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-emerald-800 bg-emerald-50 border border-emerald-300 hover:bg-emerald-100 hover:border-emerald-400 transition-all shadow-2xs"
+                title="Open Sovereign Export Vault & Security Center"
+              >
+                <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
+                <span className="hidden sm:inline">Export Vault</span>
+              </button>
+            ) : (
+              <button
+                id="export-markdown-button"
+                type="button"
+                onClick={handleExportMarkdown}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-stone-700 hover:text-stone-900 bg-white border border-stone-300 hover:border-stone-400 transition-all shadow-2xs"
+                title="Download full reflection in Markdown format"
+              >
+                {copiedExport ? (
+                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                ) : (
+                  <Download className="w-3.5 h-3.5 text-stone-500" />
+                )}
+                <span className="hidden sm:inline">{copiedExport ? 'Downloaded' : 'Export'}</span>
+              </button>
+            )}
           </div>
         </div>
 
-        {/* Configuration Row: Mode Selector & Category */}
+        {/* Configuration Row: Mode Selector, Category, Mood, Location, and Stickers */}
         <div className="flex flex-wrap items-center justify-between gap-3 text-xs">
           {/* Mode Pill Toggle */}
           <div className="flex items-center gap-1 bg-stone-200/70 p-0.5 rounded-lg overflow-x-auto max-w-full">
@@ -634,9 +880,9 @@ export const Workspace: React.FC<WorkspaceProps> = ({
             ))}
           </div>
 
-          {/* Category Dropdown & Location Pinning */}
-          <div className="flex flex-wrap items-center gap-3">
-            <div className="flex items-center gap-2">
+          {/* Category Dropdown, Location Pinning & Stickers */}
+          <div className="flex flex-wrap items-center gap-2.5">
+            <div className="flex items-center gap-1.5">
               <span className="text-stone-500 font-medium">Category:</span>
               <select
                 id="entry-category-select"
@@ -729,9 +975,60 @@ export const Workspace: React.FC<WorkspaceProps> = ({
                 </button>
               )}
             </div>
+
+            {/* Journal Stickers Chip Row & Add Button */}
+            <div className="flex items-center gap-1.5 flex-wrap">
+              {entry.stickers && entry.stickers.length > 0 && (
+                <div className="flex items-center gap-1 flex-wrap">
+                  {entry.stickers.map((sId) => {
+                    const sticker = JOURNAL_STICKERS.find((x) => x.id === sId);
+                    if (!sticker) return null;
+                    return (
+                      <span
+                        key={sId}
+                        className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold border shadow-2xs ${sticker.colorClass}`}
+                        title={sticker.description}
+                      >
+                        <span>{sticker.emoji}</span>
+                        <span>{sticker.label}</span>
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveSticker(sId)}
+                          className="p-0.5 opacity-60 hover:opacity-100 transition-opacity"
+                          title="Remove sticker"
+                        >
+                          <X className="w-2.5 h-2.5" />
+                        </button>
+                      </span>
+                    );
+                  })}
+                </div>
+              )}
+
+              <button
+                id="workspace-add-sticker-btn"
+                type="button"
+                onClick={() => setIsStickerModalOpen(true)}
+                className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium text-stone-700 hover:text-amber-700 bg-white hover:bg-amber-50/50 border border-stone-300 hover:border-amber-300 transition-colors shadow-2xs"
+                title="Attach reflection stickers and milestone badges"
+              >
+                <SmilePlus className="w-3.5 h-3.5 text-amber-600" />
+                <span>+ Sticker</span>
+              </button>
+            </div>
           </div>
         </div>
       </div>
+
+      {/* Docked Pomodoro Reflection Timer (when toggled open) */}
+      {isTimerVisible && (
+        <div className="px-4 sm:px-6 pt-3 pb-1 border-b border-amber-200/50 bg-amber-50/40">
+          <ReflectionTimer
+            onAwardSticker={handleTimerCompleted}
+            onClose={() => setIsTimerVisible(false)}
+          />
+        </div>
+      )}
 
       {/* Error Banner with Retry Guarantee */}
       {errorBanner && (
@@ -983,12 +1280,20 @@ export const Workspace: React.FC<WorkspaceProps> = ({
                       isUser ? 'text-stone-400' : 'text-stone-500'
                     }`}
                   >
-                    <span>
-                      {new Date(message.timestamp).toLocaleTimeString([], {
-                        hour: '2-digit',
-                        minute: '2-digit',
-                      })}
-                    </span>
+                    <div className="flex items-center gap-1.5">
+                      <span>
+                        {new Date(message.timestamp).toLocaleTimeString([], {
+                          hour: '2-digit',
+                          minute: '2-digit',
+                        })}
+                      </span>
+                      {!isUser && (
+                        <span className="inline-flex items-center gap-1 font-medium text-[9px] text-amber-800 bg-amber-100/70 px-1.5 py-0.5 rounded border border-amber-200/50">
+                          <Sparkles className="w-2.5 h-2.5 text-amber-600" />
+                          <span>{activeVoice.name}</span>
+                        </span>
+                      )}
+                    </div>
 
                     <button
                       type="button"
@@ -1000,7 +1305,7 @@ export const Workspace: React.FC<WorkspaceProps> = ({
                           ? 'hover:bg-stone-800 text-stone-400 hover:text-stone-200'
                           : 'hover:bg-stone-200 text-stone-500 hover:text-stone-800'
                       }`}
-                      title="Read aloud with Audio DLP protection"
+                      title={`Read aloud with ${activeVoice.name} persona (${activeVoice.tag})`}
                     >
                       <Volume2 className="w-3 h-3" />
                       <span>{speakingMessageId === message.id ? 'Speaking' : 'Read'}</span>
@@ -1114,6 +1419,14 @@ export const Workspace: React.FC<WorkspaceProps> = ({
         onClose={() => setIsLocationModalOpen(false)}
         currentLocation={entry.location}
         onSelectLocation={handleSelectLocation}
+      />
+
+      {/* Sticker & Milestone Badge Picker Modal */}
+      <StickerPickerModal
+        isOpen={isStickerModalOpen}
+        onClose={() => setIsStickerModalOpen(false)}
+        selectedStickerIds={entry.stickers || []}
+        onToggleSticker={handleToggleSticker}
       />
     </div>
   );

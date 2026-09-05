@@ -4,8 +4,15 @@
  * and unencumbered Sovereign JSON data exports.
  */
 
-import { InteractionEntry } from '../types';
+import { InteractionEntry, JOURNAL_STICKERS } from '../types';
 import { logSecurityEvent } from './workerClient';
+import { sanitizeTextForAudioDLP } from './guardrails';
+
+export interface ExportSecurityOptions {
+  includeLocations?: boolean;
+  applyDlpScrubbing?: boolean;
+  includeStickers?: boolean;
+}
 
 export interface EncryptedBackupEnvelope {
   format: 'ReflectAI Sovereign Encrypted Backup';
@@ -19,6 +26,7 @@ export interface EncryptedBackupEnvelope {
     totalMessages: number;
     integrityChecksum: string; // SHA-256
     includesLocations: boolean;
+    dlpSanitized: boolean;
     userSovereigntyCertified: boolean;
     exportTimestamp: number;
   };
@@ -86,21 +94,74 @@ async function deriveKeyFromPassphrase(
 }
 
 /**
+ * Pre-processes and sanitizes entries according to security and DLP options
+ */
+export function processEntriesForExport(
+  entries: InteractionEntry[],
+  options: ExportSecurityOptions = {}
+): { processed: InteractionEntry[]; dlpRedactions: number } {
+  const includeLocations = options.includeLocations ?? true;
+  const includeStickers = options.includeStickers ?? true;
+  const applyDlp = options.applyDlpScrubbing ?? false;
+  let dlpRedactions = 0;
+
+  const processed = entries.map((e) => {
+    const clone: InteractionEntry = { ...e };
+
+    if (!includeLocations) {
+      clone.location = null;
+    }
+
+    if (!includeStickers) {
+      clone.stickers = [];
+    }
+
+    if (applyDlp) {
+      // Scrub title
+      if (clone.title) {
+        const { cleanText, redactedCount } = sanitizeTextForAudioDLP(clone.title);
+        clone.title = cleanText;
+        dlpRedactions += redactedCount;
+      }
+      // Scrub summary
+      if (clone.summary) {
+        const { cleanText, redactedCount } = sanitizeTextForAudioDLP(clone.summary);
+        clone.summary = cleanText;
+        dlpRedactions += redactedCount;
+      }
+      // Scrub key insights
+      if (clone.keyInsights && Array.isArray(clone.keyInsights)) {
+        clone.keyInsights = clone.keyInsights.map((insight) => {
+          const { cleanText, redactedCount } = sanitizeTextForAudioDLP(insight);
+          dlpRedactions += redactedCount;
+          return cleanText;
+        });
+      }
+      // Scrub message contents
+      if (clone.messages && Array.isArray(clone.messages)) {
+        clone.messages = clone.messages.map((m) => {
+          const { cleanText, redactedCount } = sanitizeTextForAudioDLP(m.content || '');
+          dlpRedactions += redactedCount;
+          return { ...m, content: cleanText };
+        });
+      }
+    }
+
+    return clone;
+  });
+
+  return { processed, dlpRedactions };
+}
+
+/**
  * Generates an AES-256-GCM encrypted backup envelope
  */
 export async function createEncryptedBackup(
   entries: InteractionEntry[],
   passphrase?: string,
-  includeLocations = true
-): Promise<{ envelope: EncryptedBackupEnvelope; result: SovereignExportResult }> {
-  // 1. Sanitize entries and filter location if requested
-  const sanitizedEntries = entries.map((e) => {
-    const clone = { ...e };
-    if (!includeLocations) {
-      clone.location = null;
-    }
-    return clone;
-  });
+  options: ExportSecurityOptions = { includeLocations: true }
+): Promise<{ envelope: EncryptedBackupEnvelope; result: SovereignExportResult; dlpRedactions: number }> {
+  const { processed: sanitizedEntries, dlpRedactions } = processEntriesForExport(entries, options);
 
   const totalMessages = sanitizedEntries.reduce((acc, e) => acc + (e.messages?.length || 0), 0);
   const plaintextJson = JSON.stringify(sanitizedEntries);
@@ -157,7 +218,8 @@ export async function createEncryptedBackup(
       totalEntries: sanitizedEntries.length,
       totalMessages,
       integrityChecksum: checksum,
-      includesLocations: includeLocations,
+      includesLocations: options.includeLocations ?? true,
+      dlpSanitized: options.applyDlpScrubbing ?? false,
       userSovereigntyCertified: true,
       exportTimestamp: Date.now(),
     },
@@ -177,6 +239,7 @@ export async function createEncryptedBackup(
 
   return {
     envelope,
+    dlpRedactions,
     result: {
       fileName,
       blobSize,
@@ -192,15 +255,9 @@ export async function createEncryptedBackup(
  */
 export async function createSovereignJsonExport(
   entries: InteractionEntry[],
-  includeLocations = true
-): Promise<{ data: any; result: SovereignExportResult }> {
-  const sanitizedEntries = entries.map((e) => {
-    const clone = { ...e };
-    if (!includeLocations) {
-      clone.location = null;
-    }
-    return clone;
-  });
+  options: ExportSecurityOptions = { includeLocations: true }
+): Promise<{ data: any; result: SovereignExportResult; dlpRedactions: number }> {
+  const { processed: sanitizedEntries, dlpRedactions } = processEntriesForExport(entries, options);
 
   const exportPayload = {
     format: 'ReflectAI Sovereign Raw Archive',
@@ -209,6 +266,7 @@ export async function createSovereignJsonExport(
       'This document contains the unencrypted, exportable journal records of the user. Fully portable and unencumbered by proprietary lock-in.',
     exportedAt: new Date().toISOString(),
     totalEntries: sanitizedEntries.length,
+    dlpSanitized: options.applyDlpScrubbing ?? false,
     entries: sanitizedEntries,
   };
 
@@ -226,6 +284,98 @@ export async function createSovereignJsonExport(
 
   return {
     data: exportPayload,
+    dlpRedactions,
+    result: {
+      fileName,
+      blobSize,
+      sizeFormatted: formatBytes(blobSize),
+      checksum,
+      totalEntries: sanitizedEntries.length,
+    },
+  };
+}
+
+/**
+ * Generates a beautiful, sanitized Markdown Diary file (.md)
+ */
+export async function createMarkdownExport(
+  entries: InteractionEntry[],
+  options: ExportSecurityOptions = { includeLocations: true }
+): Promise<{ markdown: string; result: SovereignExportResult; dlpRedactions: number }> {
+  const { processed: sanitizedEntries, dlpRedactions } = processEntriesForExport(entries, options);
+
+  const lines: string[] = [];
+  lines.push('# ReflectAI Personal Journal Archive');
+  lines.push(`_Exported on ${new Date().toLocaleDateString(undefined, { dateStyle: 'full' })} at ${new Date().toLocaleTimeString()}_\n`);
+  lines.push('> **Data Sovereignty & Zero-Knowledge Guarantee:** This document was generated directly from your local browser cryptographic enclave. No unencrypted reflections were ever exposed to server storage.\n');
+
+  if (options.applyDlpScrubbing) {
+    lines.push(`> 🛡️ **DLP Redaction Applied:** Sensitive phone numbers, emails, addresses, and ID patterns were scrubbed before export (${dlpRedactions} redactions).\n`);
+  }
+
+  lines.push('---\n');
+
+  sanitizedEntries.forEach((entry, idx) => {
+    lines.push(`## ${idx + 1}. ${entry.title || 'Untitled Reflection'}`);
+    lines.push(`**Date:** ${new Date(entry.createdAt).toLocaleString()} | **Category:** ${entry.category} | **Mode:** ${entry.mode}`);
+
+    if (entry.mood) {
+      lines.push(`**Mood:** ${entry.mood}`);
+    }
+
+    if (entry.stickers && entry.stickers.length > 0) {
+      const stickerBadges = entry.stickers
+        .map((sId) => {
+          const found = JOURNAL_STICKERS.find((s) => s.id === sId);
+          return found ? `${found.emoji} ${found.label}` : sId;
+        })
+        .join(' • ');
+      lines.push(`**Stickers:** ${stickerBadges}`);
+    }
+
+    if (entry.location) {
+      lines.push(`**Location:** 📍 ${entry.location.name || entry.location.formattedAddress || 'Pinned Coordinate'}`);
+    }
+
+    lines.push('');
+
+    if (entry.summary) {
+      lines.push('### Executive Summary');
+      lines.push(`${entry.summary}\n`);
+    }
+
+    if (entry.keyInsights && entry.keyInsights.length > 0) {
+      lines.push('### Key Insights & Takeaways');
+      entry.keyInsights.forEach((insight) => {
+        lines.push(`- ${insight}`);
+      });
+      lines.push('');
+    }
+
+    if (entry.messages && entry.messages.length > 0) {
+      lines.push('### Dialogue & Reflection Transcript');
+      entry.messages.forEach((msg) => {
+        const sender = msg.role === 'user' ? '👤 **You**' : '✨ **ReflectAI Mentor**';
+        const timestamp = msg.timestamp ? ` _(${new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })})_` : '';
+        lines.push(`${sender}${timestamp}:`);
+        lines.push(`\n${msg.content}\n`);
+      });
+    }
+
+    lines.push('\n---\n');
+  });
+
+  const markdownContent = lines.join('\n');
+  const checksum = await computeSha256(markdownContent);
+  const finalMarkdown = `${markdownContent}\n\n<!-- REFLECTAI_CRYPTO_INTEGRITY_SEAL: SHA256=${checksum} -->\n`;
+
+  const blobSize = new Blob([finalMarkdown]).size;
+  const dateStamp = new Date().toISOString().slice(0, 10);
+  const fileName = `reflectai-journal-diary-${dateStamp}.md`;
+
+  return {
+    markdown: finalMarkdown,
+    dlpRedactions,
     result: {
       fileName,
       blobSize,
