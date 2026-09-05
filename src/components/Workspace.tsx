@@ -30,6 +30,11 @@ import {
   Play,
   Square,
   Check,
+  MoreVertical,
+  Maximize2,
+  Minimize2,
+  PanelLeftOpen,
+  PanelLeftClose,
 } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import { APIProvider, Map, AdvancedMarker, Pin } from '@vis.gl/react-google-maps';
@@ -60,6 +65,8 @@ interface WorkspaceProps {
   entry: InteractionEntry;
   onUpdateEntry: (updated: InteractionEntry) => Promise<void>;
   onToggleMobileSidebar: () => void;
+  isDesktopSidebarCollapsed?: boolean;
+  onToggleDesktopSidebar?: () => void;
   onOpenJarvisVoice?: () => void;
   onTriggerSafeMode?: (phrase?: string) => void;
   onOpenMoodInsights?: () => void;
@@ -94,6 +101,8 @@ export const Workspace: React.FC<WorkspaceProps> = ({
   entry,
   onUpdateEntry,
   onToggleMobileSidebar,
+  isDesktopSidebarCollapsed = false,
+  onToggleDesktopSidebar,
   onOpenJarvisVoice,
   onTriggerSafeMode,
   onOpenMoodInsights,
@@ -129,24 +138,29 @@ export const Workspace: React.FC<WorkspaceProps> = ({
   );
   const [externalAlertStatus, setExternalAlertStatus] = useState<string | null>(null);
   const [isSendingAlert, setIsSendingAlert] = useState(false);
+  const [isActionsMenuOpen, setIsActionsMenuOpen] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const personaMenuRef = useRef<HTMLDivElement>(null);
+  const actionsMenuRef = useRef<HTMLDivElement>(null);
 
-  // Close persona menu on click outside
+  // Close actions 3-dots menu and persona menu on click outside
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
       if (personaMenuRef.current && !personaMenuRef.current.contains(e.target as Node)) {
         setIsPersonaMenuOpen(false);
       }
+      if (actionsMenuRef.current && !actionsMenuRef.current.contains(e.target as Node)) {
+        setIsActionsMenuOpen(false);
+      }
     }
-    if (isPersonaMenuOpen) {
+    if (isPersonaMenuOpen || isActionsMenuOpen) {
       document.addEventListener('mousedown', handleClickOutside);
     }
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
     };
-  }, [isPersonaMenuOpen]);
+  }, [isPersonaMenuOpen, isActionsMenuOpen]);
 
   // Dispatch external notifications for parsed reflection (Slack, Discord, Email)
   const dispatchNotificationForEntry = async (
@@ -623,24 +637,56 @@ export const Workspace: React.FC<WorkspaceProps> = ({
           borderColor: currentTheme.borderColor,
         }}
       >
-        <div className="flex items-center justify-between gap-3">
+        <div className="flex items-center justify-between gap-2.5">
           {/* Mobile sidebar toggle */}
           <button
             id="mobile-sidebar-toggle"
             type="button"
             onClick={onToggleMobileSidebar}
-            className="lg:hidden p-2 rounded-lg text-stone-600 hover:bg-stone-200 transition-colors"
+            className="lg:hidden p-2 rounded-xl text-stone-600 hover:bg-stone-200/70 transition-colors shrink-0"
             title="Toggle past reflections"
           >
             <Menu className="w-5 h-5" />
           </button>
+
+          {/* Desktop full screen toggle button */}
+          {onToggleDesktopSidebar && (
+            <button
+              id="desktop-sidebar-toggle"
+              type="button"
+              onClick={onToggleDesktopSidebar}
+              className="hidden lg:flex p-1.5 rounded-xl border border-stone-200/80 hover:bg-stone-100 text-stone-600 hover:text-stone-900 transition-all items-center gap-1.5 shrink-0 text-xs shadow-2xs"
+              style={{
+                backgroundColor: currentTheme.bgSurface,
+                borderColor: currentTheme.borderColor,
+                color: currentTheme.textMain,
+              }}
+              title={
+                isDesktopSidebarCollapsed
+                  ? 'Exit full screen (Show past reflections sidebar)'
+                  : 'Full screen dashboard (Collapse sidebar)'
+              }
+            >
+              {isDesktopSidebarCollapsed ? (
+                <>
+                  <PanelLeftOpen className="w-3.5 h-3.5 text-amber-600" />
+                  <span className="hidden xl:inline text-[11px] font-medium">Show Sidebar</span>
+                </>
+              ) : (
+                <>
+                  <Maximize2 className="w-3.5 h-3.5 text-stone-500" />
+                  <span className="hidden xl:inline text-[11px] font-medium">Full Screen</span>
+                </>
+              )}
+            </button>
+          )}
 
           {/* Title Editor */}
           <div className="flex-1 flex items-center min-w-0">
             {entry.mood && (
               <span
                 id="entry-title-mood-emoji"
-                className="text-lg sm:text-xl mr-1.5 shrink-0 select-none"
+                className="text-base sm:text-lg mr-1.5 shrink-0 select-none"
                 title={`Mood: ${entry.mood}`}
               >
                 {entry.mood.split(' ')[0]}
@@ -653,209 +699,380 @@ export const Workspace: React.FC<WorkspaceProps> = ({
               key={entry.id + entry.title}
               onBlur={handleTitleBlur}
               placeholder="Name your reflection..."
-              className="flex-1 text-base sm:text-lg font-semibold bg-transparent px-2 py-1 -ml-2 rounded-md border border-transparent focus:border-stone-300 focus:outline-none transition-colors truncate"
+              className="flex-1 text-sm sm:text-base font-semibold bg-transparent px-2 py-1 -ml-1 rounded-md border border-transparent focus:border-stone-300 focus:outline-none transition-colors truncate"
               style={{ color: currentTheme.textMain }}
             />
           </div>
 
-          {/* Action buttons */}
-          <div className="flex items-center gap-2">
+          {/* Action buttons & 3-dots kebab menu */}
+          <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
             {/* Real-time Autosave Feedback Badge */}
             <div
               id="workspace-autosave-indicator"
-              className="flex items-center gap-1.5 px-2 py-1 rounded-lg text-[11px] border transition-all duration-200 select-none"
+              className="flex items-center gap-1 px-2 py-1 rounded-lg text-[11px] border transition-all duration-200 select-none shrink-0"
+              style={{
+                borderColor: currentTheme.borderColor,
+                backgroundColor: `${currentTheme.bgMain}70`,
+              }}
               title={`Zero-Knowledge Cloud Firestore Autosave Status: ${autosaveState}`}
             >
               {autosaveState === 'saving' ? (
-                <span className="flex items-center gap-1 text-amber-700 font-medium">
-                  <RefreshCw className="w-3 h-3 animate-spin text-amber-600" />
-                  <span className="hidden sm:inline">Autosaving...</span>
+                <span className="flex items-center gap-1 text-amber-600 font-medium">
+                  <RefreshCw className="w-3 h-3 animate-spin" />
+                  <span className="hidden sm:inline">Saving...</span>
                 </span>
               ) : autosaveState === 'error' ? (
-                <span className="flex items-center gap-1 text-rose-700 font-medium">
-                  <AlertCircle className="w-3 h-3 text-rose-600" />
-                  <span>Save Error</span>
+                <span className="flex items-center gap-1 text-rose-600 font-medium">
+                  <AlertCircle className="w-3 h-3" />
+                  <span className="hidden sm:inline">Save Error</span>
                 </span>
               ) : (
-                <span className="flex items-center gap-1 text-emerald-700 font-medium">
-                  <CheckCircle2 className="w-3 h-3 text-emerald-600" />
-                  <span className="hidden xs:inline">Autosaved</span>
-                  <span className="text-[10px] text-stone-400 hidden sm:inline">({lastSavedTime})</span>
+                <span className="flex items-center gap-1 text-emerald-600 font-medium">
+                  <CheckCircle2 className="w-3 h-3" />
+                  <span className="hidden sm:inline">Saved</span>
+                  <span className="text-[10px] text-stone-400 hidden md:inline">({lastSavedTime})</span>
                 </span>
               )}
             </div>
 
-            {/* Reflection Timer Toggle Button */}
-            <button
-              id="workspace-reflection-timer-button"
-              type="button"
-              onClick={() => setIsTimerVisible(!isTimerVisible)}
-              className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all shadow-2xs ${
-                isTimerVisible
-                  ? 'bg-amber-100 text-amber-900 border border-amber-300 font-semibold'
-                  : 'text-stone-700 hover:text-stone-900 bg-white border border-stone-300 hover:border-amber-400'
-              }`}
-              title="Toggle Pomodoro-style uninterrupted reflection timer"
-            >
-              <Timer className="w-3.5 h-3.5 text-amber-600" />
-              <span className="hidden md:inline">Reflection Timer</span>
-            </button>
-
-            {/* Multi-Voice Persona Selector Dropdown */}
-            <div className="relative" ref={personaMenuRef}>
-              <button
-                id="workspace-persona-select-btn"
-                type="button"
-                onClick={() => setIsPersonaMenuOpen(!isPersonaMenuOpen)}
-                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium text-stone-800 bg-white border border-stone-300 hover:border-stone-400 transition-all shadow-2xs"
-                title={`Active AI Persona: ${activeVoice.name}. Click to change voice persona tone.`}
-              >
-                <Volume2 className="w-3.5 h-3.5 text-amber-600" />
-                <span className="hidden sm:inline font-semibold">{activeVoice.name}</span>
-                <ChevronDown className="w-3 h-3 text-stone-400" />
-              </button>
-
-              {isPersonaMenuOpen && (
-                <div className="absolute right-0 mt-1.5 w-72 rounded-2xl bg-white border border-stone-200 shadow-xl py-2 z-50 animate-fade-in text-stone-900">
-                  <div className="px-3 py-1.5 border-b border-stone-100 flex items-center justify-between">
-                    <span className="text-[10px] uppercase font-bold text-stone-600 tracking-wider">
-                      AI Voice Personas
-                    </span>
-                    <span className="text-[10px] text-amber-600 font-semibold">Gemini Prompt Tuned</span>
-                  </div>
-
-                  <div className="max-h-80 overflow-y-auto p-1.5 space-y-1">
-                    {VOICE_PERSONAS.map((p) => {
-                      const isSelected = activeVoiceId === p.id;
-                      const isAuditioning = auditioningVoiceId === p.id;
-                      return (
-                        <div
-                          key={p.id}
-                          onClick={() => {
-                            setActiveVoiceId(p.id);
-                            setIsPersonaMenuOpen(false);
-                          }}
-                          className={`p-2.5 rounded-xl transition-all cursor-pointer flex items-start justify-between gap-2 ${
-                            isSelected
-                              ? 'bg-amber-50/80 border border-amber-300/80'
-                              : 'hover:bg-stone-50 border border-transparent'
-                          }`}
-                        >
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-1.5">
-                              <span className="font-bold text-xs text-stone-900 truncate">{p.name}</span>
-                              <span className="text-[9px] px-1.5 py-0.5 rounded bg-stone-100 text-stone-600 font-medium shrink-0">
-                                {p.tag}
-                              </span>
-                              {isSelected && (
-                                <Check className="w-3.5 h-3.5 text-amber-600 ml-auto shrink-0" />
-                              )}
-                            </div>
-                            <p className="text-[11px] text-stone-500 line-clamp-2 mt-0.5 leading-relaxed">
-                              {p.description}
-                            </p>
-                          </div>
-
-                          <button
-                            type="button"
-                            title={`Audition sample greeting for ${p.name}`}
-                            onClick={(e) => handleAuditionPersona(e, p)}
-                            className={`p-1.5 rounded-lg shrink-0 transition-colors ${
-                              isAuditioning
-                                ? 'bg-amber-500 text-white animate-pulse'
-                                : 'text-stone-400 hover:text-amber-700 hover:bg-amber-100'
-                            }`}
-                          >
-                            {isAuditioning ? <Square className="w-3.5 h-3.5" /> : <Play className="w-3.5 h-3.5" />}
-                          </button>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {onOpenMoodInsights && (
-              <button
-                id="workspace-mood-insights-button"
-                type="button"
-                onClick={onOpenMoodInsights}
-                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium text-stone-700 hover:text-stone-900 bg-white border border-stone-300 hover:border-amber-400 hover:bg-amber-50/50 transition-all shadow-2xs"
-                title="Open Mood Insights (D3.js Local Enclave Visualization)"
-              >
-                <BarChart3 className="w-3.5 h-3.5 text-amber-600" />
-                <span className="hidden lg:inline">Mood Insights</span>
-              </button>
-            )}
-
-            {onOpenVoiceGuide && (
-              <button
-                id="workspace-voice-guide-button"
-                type="button"
-                onClick={onOpenVoiceGuide}
-                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium text-stone-700 hover:text-stone-900 bg-white border border-stone-300 hover:border-stone-400 transition-all shadow-2xs"
-                title="Voice Command Guide & Natural Language Reference"
-              >
-                <HelpCircle className="w-3.5 h-3.5 text-stone-500" />
-                <span className="hidden xl:inline">Voice Guide</span>
-              </button>
-            )}
-
-            {onOpenJarvisVoice && (
-              <button
-                id="workspace-jarvis-voice-button"
-                type="button"
-                onClick={onOpenJarvisVoice}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold text-stone-900 bg-amber-400 hover:bg-amber-300 transition-all shadow-2xs active:scale-95"
-                title="Launch Jarvis Ambient Voice interface"
-              >
-                <Mic className="w-3.5 h-3.5 animate-pulse text-stone-950" />
-                <span className="hidden sm:inline">Jarvis Voice</span>
-              </button>
-            )}
-
+            {/* Summarize Action Button (Primary AI trigger) */}
             <button
               id="summarize-session-button"
               type="button"
               onClick={handleGenerateSummary}
               disabled={isSummarizing || entry.messages.length === 0}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-stone-700 hover:text-stone-900 bg-white border border-stone-300 hover:border-stone-400 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-2xs"
+              className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-xl text-xs font-semibold bg-amber-500/15 hover:bg-amber-500/25 border border-amber-400/40 text-amber-900 dark:text-amber-200 disabled:opacity-40 disabled:cursor-not-allowed transition-all shadow-2xs shrink-0"
               title="Generate summary and extract key takeaways with Gemini"
             >
-              <Sparkles className={`w-3.5 h-3.5 text-amber-600 ${isSummarizing ? 'animate-spin' : ''}`} />
+              <Sparkles className={`w-3.5 h-3.5 text-amber-600 dark:text-amber-400 ${isSummarizing ? 'animate-spin' : ''}`} />
               <span className="hidden sm:inline">
                 {isSummarizing ? 'Summarizing...' : 'Summarize'}
               </span>
             </button>
 
-            {onOpenSecurityModal ? (
+            {/* Desktop-Only Quick Access Buttons (xl: screen breakpoint) */}
+            <div className="hidden xl:flex items-center gap-1.5">
+              {/* Reflection Timer Toggle */}
               <button
-                id="workspace-security-vault-export-btn"
+                id="workspace-reflection-timer-button"
                 type="button"
-                onClick={onOpenSecurityModal}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-emerald-800 bg-emerald-50 border border-emerald-300 hover:bg-emerald-100 hover:border-emerald-400 transition-all shadow-2xs"
-                title="Open Sovereign Export Vault & Security Center"
+                onClick={() => setIsTimerVisible(!isTimerVisible)}
+                className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-medium transition-all shadow-2xs border ${
+                  isTimerVisible
+                    ? 'bg-amber-100 text-amber-900 border-amber-300 font-semibold'
+                    : 'text-stone-700 hover:text-stone-900 bg-white border-stone-200 hover:border-amber-300'
+                }`}
+                title="Toggle Pomodoro reflection timer"
               >
-                <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
-                <span className="hidden sm:inline">Export Vault</span>
+                <Timer className="w-3.5 h-3.5 text-amber-600" />
+                <span>Timer</span>
               </button>
-            ) : (
-              <button
-                id="export-markdown-button"
-                type="button"
-                onClick={handleExportMarkdown}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-stone-700 hover:text-stone-900 bg-white border border-stone-300 hover:border-stone-400 transition-all shadow-2xs"
-                title="Download full reflection in Markdown format"
-              >
-                {copiedExport ? (
-                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
-                ) : (
-                  <Download className="w-3.5 h-3.5 text-stone-500" />
+
+              {/* Multi-Voice Persona Selector Dropdown */}
+              <div className="relative" ref={personaMenuRef}>
+                <button
+                  id="workspace-persona-select-btn"
+                  type="button"
+                  onClick={() => setIsPersonaMenuOpen(!isPersonaMenuOpen)}
+                  className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-medium text-stone-800 bg-white border border-stone-200 hover:border-stone-300 transition-all shadow-2xs"
+                  title={`Active AI Persona: ${activeVoice.name}`}
+                >
+                  <Volume2 className="w-3.5 h-3.5 text-amber-600" />
+                  <span className="font-semibold">{activeVoice.name}</span>
+                  <ChevronDown className="w-3 h-3 text-stone-400" />
+                </button>
+
+                {isPersonaMenuOpen && (
+                  <div className="absolute right-0 mt-1.5 w-72 rounded-2xl bg-white border border-stone-200 shadow-xl py-2 z-50 animate-fade-in text-stone-900">
+                    <div className="px-3 py-1.5 border-b border-stone-100 flex items-center justify-between">
+                      <span className="text-[10px] uppercase font-bold text-stone-600 tracking-wider">
+                        AI Voice Personas
+                      </span>
+                      <span className="text-[10px] text-amber-600 font-semibold">Gemini Prompt Tuned</span>
+                    </div>
+
+                    <div className="max-h-80 overflow-y-auto p-1.5 space-y-1">
+                      {VOICE_PERSONAS.map((p) => {
+                        const isSelected = activeVoiceId === p.id;
+                        const isAuditioning = auditioningVoiceId === p.id;
+                        return (
+                          <div
+                            key={p.id}
+                            onClick={() => {
+                              setActiveVoiceId(p.id);
+                              setIsPersonaMenuOpen(false);
+                            }}
+                            className={`p-2.5 rounded-xl transition-all cursor-pointer flex items-start justify-between gap-2 ${
+                              isSelected
+                                ? 'bg-amber-50/80 border border-amber-300/80'
+                                : 'hover:bg-stone-50 border border-transparent'
+                            }`}
+                          >
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-1.5">
+                                <span className="font-bold text-xs text-stone-900 truncate">{p.name}</span>
+                                <span className="text-[9px] px-1.5 py-0.5 rounded bg-stone-100 text-stone-600 font-medium shrink-0">
+                                  {p.tag}
+                                </span>
+                                {isSelected && (
+                                  <Check className="w-3.5 h-3.5 text-amber-600 ml-auto shrink-0" />
+                                )}
+                              </div>
+                              <p className="text-[11px] text-stone-500 line-clamp-2 mt-0.5 leading-relaxed">
+                                {p.description}
+                              </p>
+                            </div>
+
+                            <button
+                              type="button"
+                              title={`Audition sample greeting for ${p.name}`}
+                              onClick={(e) => handleAuditionPersona(e, p)}
+                              className={`p-1.5 rounded-lg shrink-0 transition-colors ${
+                                isAuditioning
+                                  ? 'bg-amber-500 text-white animate-pulse'
+                                  : 'text-stone-400 hover:text-amber-700 hover:bg-amber-100'
+                              }`}
+                            >
+                              {isAuditioning ? <Square className="w-3.5 h-3.5" /> : <Play className="w-3.5 h-3.5" />}
+                            </button>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
                 )}
-                <span className="hidden sm:inline">{copiedExport ? 'Downloaded' : 'Export'}</span>
+              </div>
+
+              {/* Jarvis Voice Launcher */}
+              {onOpenJarvisVoice && (
+                <button
+                  id="workspace-jarvis-voice-button"
+                  type="button"
+                  onClick={onOpenJarvisVoice}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold text-stone-950 bg-amber-400 hover:bg-amber-300 transition-all shadow-2xs active:scale-95"
+                  title="Launch Jarvis Ambient Voice interface"
+                >
+                  <Mic className="w-3.5 h-3.5 animate-pulse text-stone-950" />
+                  <span>Jarvis</span>
+                </button>
+              )}
+            </div>
+
+            {/* 3-DOTS KEBAB MENU BUTTON: For Laptop Full Screen Dashboard & Clean Phone/Tablet Mode */}
+            <div className="relative" ref={actionsMenuRef}>
+              <button
+                id="workspace-kebab-menu-button"
+                type="button"
+                onClick={() => setIsActionsMenuOpen(!isActionsMenuOpen)}
+                className={`p-2 rounded-xl border transition-all flex items-center justify-center shadow-2xs shrink-0 ${
+                  isActionsMenuOpen
+                    ? 'bg-stone-900 text-white border-stone-900 shadow-md'
+                    : 'bg-white hover:bg-stone-100 text-stone-700 border-stone-200'
+                }`}
+                style={
+                  isActionsMenuOpen
+                    ? undefined
+                    : {
+                        backgroundColor: currentTheme.bgSurface,
+                        borderColor: currentTheme.borderColor,
+                        color: currentTheme.textMain,
+                      }
+                }
+                title="Workspace tools & full screen options"
+                aria-label="Workspace tools & options"
+              >
+                <MoreVertical className="w-4 h-4" />
               </button>
-            )}
+
+              {/* Dropdown Menu */}
+              {isActionsMenuOpen && (
+                <div
+                  id="workspace-kebab-menu-dropdown"
+                  className="absolute right-0 mt-2 w-72 rounded-2xl bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 shadow-2xl py-2 z-50 animate-fade-in text-stone-900 dark:text-stone-100 divide-y divide-stone-100 dark:divide-stone-800"
+                >
+                  {/* Section 1: Dashboard View & Full Screen */}
+                  <div className="py-1 px-1">
+                    {onToggleDesktopSidebar && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          onToggleDesktopSidebar();
+                          setIsActionsMenuOpen(false);
+                        }}
+                        className="w-full px-3 py-2 rounded-xl flex items-center justify-between text-xs hover:bg-stone-100 dark:hover:bg-stone-800 transition-colors text-left font-medium"
+                      >
+                        <span className="flex items-center gap-2.5">
+                          {isDesktopSidebarCollapsed ? (
+                            <PanelLeftOpen className="w-4 h-4 text-amber-600" />
+                          ) : (
+                            <Maximize2 className="w-4 h-4 text-stone-600 dark:text-stone-300" />
+                          )}
+                          <span>
+                            {isDesktopSidebarCollapsed
+                              ? 'Exit Full Screen (Show Sidebar)'
+                              : 'Full Screen Dashboard'}
+                          </span>
+                        </span>
+                        <span className="text-[10px] px-1.5 py-0.5 rounded bg-stone-100 dark:bg-stone-800 text-stone-600 dark:text-stone-400 font-mono">
+                          {isDesktopSidebarCollapsed ? 'Full' : 'Normal'}
+                        </span>
+                      </button>
+                    )}
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsTimerVisible(!isTimerVisible);
+                        setIsActionsMenuOpen(false);
+                      }}
+                      className="w-full px-3 py-2 rounded-xl flex items-center justify-between text-xs hover:bg-stone-100 dark:hover:bg-stone-800 transition-colors text-left font-medium"
+                    >
+                      <span className="flex items-center gap-2.5">
+                        <Timer className="w-4 h-4 text-amber-600" />
+                        <span>Reflection Timer (Pomodoro)</span>
+                      </span>
+                      <span
+                        className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${
+                          isTimerVisible
+                            ? 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300'
+                            : 'bg-stone-100 text-stone-500 dark:bg-stone-800 dark:text-stone-400'
+                        }`}
+                      >
+                        {isTimerVisible ? 'Active' : 'Off'}
+                      </span>
+                    </button>
+                  </div>
+
+                  {/* Section 2: AI Voice Personas & Jarvis */}
+                  <div className="py-1 px-1">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsActionsMenuOpen(false);
+                        setIsPersonaMenuOpen(true);
+                      }}
+                      className="w-full px-3 py-2 rounded-xl flex items-center justify-between text-xs hover:bg-stone-100 dark:hover:bg-stone-800 transition-colors text-left font-medium"
+                    >
+                      <span className="flex items-center gap-2.5">
+                        <Volume2 className="w-4 h-4 text-amber-600" />
+                        <span>AI Voice Persona</span>
+                      </span>
+                      <span className="text-[10px] px-2 py-0.5 rounded bg-amber-50 text-amber-800 border border-amber-200 dark:bg-amber-950 dark:text-amber-300 dark:border-amber-800 font-medium">
+                        {activeVoice.name}
+                      </span>
+                    </button>
+
+                    {onOpenJarvisVoice && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsActionsMenuOpen(false);
+                          onOpenJarvisVoice();
+                        }}
+                        className="w-full px-3 py-2 rounded-xl flex items-center justify-between text-xs hover:bg-amber-50/70 dark:hover:bg-amber-950/30 transition-colors text-left font-medium"
+                      >
+                        <span className="flex items-center gap-2.5">
+                          <Mic className="w-4 h-4 text-amber-600" />
+                          <span>Launch Jarvis Voice</span>
+                        </span>
+                        <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-400 text-stone-950 font-bold">
+                          Voice AI
+                        </span>
+                      </button>
+                    )}
+
+                    {onOpenVoiceGuide && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsActionsMenuOpen(false);
+                          onOpenVoiceGuide();
+                        }}
+                        className="w-full px-3 py-2 rounded-xl flex items-center gap-2.5 text-xs hover:bg-stone-100 dark:hover:bg-stone-800 transition-colors text-left font-medium"
+                      >
+                        <HelpCircle className="w-4 h-4 text-stone-500" />
+                        <span>Voice Commands Guide</span>
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Section 3: Analytics & Export Vault */}
+                  <div className="py-1 px-1">
+                    {onOpenMoodInsights && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsActionsMenuOpen(false);
+                          onOpenMoodInsights();
+                        }}
+                        className="w-full px-3 py-2 rounded-xl flex items-center gap-2.5 text-xs hover:bg-stone-100 dark:hover:bg-stone-800 transition-colors text-left font-medium"
+                      >
+                        <BarChart3 className="w-4 h-4 text-amber-600" />
+                        <span>30-Day Mood Insights</span>
+                      </button>
+                    )}
+
+                    {onOpenSecurityModal ? (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsActionsMenuOpen(false);
+                          onOpenSecurityModal();
+                        }}
+                        className="w-full px-3 py-2 rounded-xl flex items-center justify-between text-xs hover:bg-emerald-50 dark:hover:bg-emerald-950/30 transition-colors text-left font-medium text-emerald-800 dark:text-emerald-300"
+                      >
+                        <span className="flex items-center gap-2.5">
+                          <ShieldCheck className="w-4 h-4 text-emerald-600" />
+                          <span>Export Vault & Security</span>
+                        </span>
+                        <span className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-100 dark:bg-emerald-900 text-emerald-800 dark:text-emerald-200">
+                          Encrypted
+                        </span>
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsActionsMenuOpen(false);
+                          handleExportMarkdown();
+                        }}
+                        className="w-full px-3 py-2 rounded-xl flex items-center gap-2.5 text-xs hover:bg-stone-100 dark:hover:bg-stone-800 transition-colors text-left font-medium"
+                      >
+                        <Download className="w-4 h-4 text-stone-500" />
+                        <span>Download Markdown (.md)</span>
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Section 4: Metadata (Location & Stickers) */}
+                  <div className="py-1 px-1">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsActionsMenuOpen(false);
+                        setIsLocationModalOpen(true);
+                      }}
+                      className="w-full px-3 py-2 rounded-xl flex items-center gap-2.5 text-xs hover:bg-stone-100 dark:hover:bg-stone-800 transition-colors text-left font-medium"
+                    >
+                      <MapPin className="w-4 h-4 text-emerald-600" />
+                      <span>{entry.location ? 'Change Pinned Location' : 'Pin Location on Map'}</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsActionsMenuOpen(false);
+                        setIsStickerModalOpen(true);
+                      }}
+                      className="w-full px-3 py-2 rounded-xl flex items-center gap-2.5 text-xs hover:bg-stone-100 dark:hover:bg-stone-800 transition-colors text-left font-medium"
+                    >
+                      <SmilePlus className="w-4 h-4 text-amber-600" />
+                      <span>Add Reflection Stickers</span>
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
         </div>
 

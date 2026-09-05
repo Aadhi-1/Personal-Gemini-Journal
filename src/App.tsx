@@ -104,6 +104,21 @@ export default function App() {
   const [isThemeCustomizerOpen, setIsThemeCustomizerOpen] = useState(false);
   const [isVoiceCheckInOpen, setIsVoiceCheckInOpen] = useState(false);
 
+  // Desktop Full-Screen Dashboard & Sidebar Collapse State
+  const [isDesktopSidebarCollapsed, setIsDesktopSidebarCollapsed] = useState<boolean>(false);
+
+  // Keyboard shortcut to toggle sidebar / full screen (Ctrl+B or Cmd+B)
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'b') {
+        e.preventDefault();
+        setIsDesktopSidebarCollapsed((prev) => !prev);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
+
   // Trigger Voice Check-in automatically after login if not yet completed in this session
   useEffect(() => {
     if (currentUser && !hasSeenVoiceCheckIn && !isAuthLoading) {
@@ -359,6 +374,9 @@ export default function App() {
               isMobileOpen={isMobileSidebarOpen}
               onCloseMobile={() => setIsMobileSidebarOpen(false)}
               onOpenMoodInsights={() => setIsMoodInsightsOpen(true)}
+              onOpenThemeCustomizer={() => setIsThemeCustomizerOpen(true)}
+              isDesktopCollapsed={isDesktopSidebarCollapsed}
+              onToggleDesktopCollapse={() => setIsDesktopSidebarCollapsed(!isDesktopSidebarCollapsed)}
             />
 
             {/* Active Workspace */}
@@ -368,6 +386,8 @@ export default function App() {
                 entry={selectedEntry}
                 onUpdateEntry={handleUpdateEntry}
                 onToggleMobileSidebar={() => setIsMobileSidebarOpen(!isMobileSidebarOpen)}
+                isDesktopSidebarCollapsed={isDesktopSidebarCollapsed}
+                onToggleDesktopSidebar={() => setIsDesktopSidebarCollapsed(!isDesktopSidebarCollapsed)}
                 onOpenJarvisVoice={() => setIsJarvisVoiceOpen(true)}
                 onTriggerSafeMode={handleTriggerSafeMode}
                 onOpenMoodInsights={() => setIsMoodInsightsOpen(true)}

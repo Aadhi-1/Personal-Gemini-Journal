@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   Plus,
   Search,
@@ -10,8 +10,15 @@ import {
   Sparkles,
   MapPin,
   BarChart3,
+  MoreVertical,
+  PanelLeftClose,
+  Maximize2,
+  Palette,
+  X,
+  RotateCcw,
 } from 'lucide-react';
-import { InteractionEntry, JournalCategory } from '../types';
+import { InteractionEntry, JournalCategory, JOURNAL_STICKERS } from '../types';
+import { useTheme, ACCENT_COLORS } from '../theme/ThemeContext';
 
 interface SidebarProps {
   entries: InteractionEntry[];
@@ -22,6 +29,9 @@ interface SidebarProps {
   isMobileOpen: boolean;
   onCloseMobile: () => void;
   onOpenMoodInsights?: () => void;
+  onOpenThemeCustomizer?: () => void;
+  isDesktopCollapsed?: boolean;
+  onToggleDesktopCollapse?: () => void;
 }
 
 const CATEGORIES: ('All' | JournalCategory)[] = [
@@ -43,10 +53,29 @@ export const Sidebar: React.FC<SidebarProps> = ({
   isMobileOpen,
   onCloseMobile,
   onOpenMoodInsights,
+  onOpenThemeCustomizer,
+  isDesktopCollapsed = false,
+  onToggleDesktopCollapse,
 }) => {
+  const { currentTheme, accentColorId } = useTheme();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<'All' | JournalCategory>('All');
   const [entryToDelete, setEntryToDelete] = useState<string | null>(null);
+  const [isHeaderMenuOpen, setIsHeaderMenuOpen] = useState(false);
+  const headerMenuRef = useRef<HTMLDivElement>(null);
+
+  // Close 3-dots menu on click outside
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (headerMenuRef.current && !headerMenuRef.current.contains(e.target as Node)) {
+        setIsHeaderMenuOpen(false);
+      }
+    };
+    if (isHeaderMenuOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [isHeaderMenuOpen]);
 
   // Filter entries based on search and category
   const filteredEntries = entries.filter((entry) => {
@@ -98,76 +127,259 @@ export const Sidebar: React.FC<SidebarProps> = ({
       {/* Sidebar Container */}
       <aside
         id="journal-sidebar"
-        className={`fixed lg:static top-16 bottom-0 left-0 z-30 w-80 sm:w-88 bg-stone-50 border-r border-stone-200 flex flex-col transition-transform duration-200 ease-in-out ${
-          isMobileOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
+        style={{
+          backgroundColor: currentTheme.bgSurface,
+          borderColor: currentTheme.borderColor,
+          color: currentTheme.textMain,
+        }}
+        className={`fixed lg:static top-16 bottom-0 left-0 z-30 border-r flex flex-col transition-all duration-300 ease-in-out ${
+          isMobileOpen ? 'translate-x-0 w-80 sm:w-88' : '-translate-x-full lg:translate-x-0'
+        } ${
+          isDesktopCollapsed
+            ? 'lg:w-0 lg:opacity-0 lg:overflow-hidden lg:border-r-0 lg:pointer-events-none'
+            : 'lg:w-80 sm:lg:w-88 lg:opacity-100'
         }`}
       >
-        {/* New Entry Action Header */}
-        <div className="p-4 border-b border-stone-200">
-          <button
-            id="new-reflection-button"
-            type="button"
-            onClick={() => {
-              onNewEntry();
-              onCloseMobile();
-            }}
-            className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-stone-900 hover:bg-stone-800 text-white text-sm font-medium transition-all shadow-xs cursor-pointer active:scale-[0.99]"
-          >
-            <Plus className="w-4 h-4" />
-            <span>New Reflection</span>
-          </button>
+        {/* Top Header Row with 3-Dots Menu & Fullscreen Collapse */}
+        <div className="p-4 border-b flex flex-col gap-3" style={{ borderColor: currentTheme.borderColor }}>
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2 min-w-0">
+              <div
+                className="w-7 h-7 rounded-lg flex items-center justify-center text-white shrink-0 shadow-2xs"
+                style={{ backgroundColor: ACCENT_COLORS[accentColorId].hex }}
+              >
+                <BookOpen className="w-3.5 h-3.5" />
+              </div>
+              <div className="min-w-0">
+                <h2 className="text-xs font-bold uppercase tracking-wider truncate" style={{ color: currentTheme.textMain }}>
+                  Reflections
+                </h2>
+                <p className="text-[10px] truncate" style={{ color: currentTheme.textMuted }}>
+                  {entries.length} {entries.length === 1 ? 'entry' : 'entries'} saved
+                </p>
+              </div>
+            </div>
 
-          {/* Search Input */}
-          <div className="relative mt-3">
-            <Search className="w-4 h-4 text-stone-400 absolute left-3 top-1/2 -translate-y-1/2" />
-            <input
-              id="search-reflections-input"
-              type="text"
-              placeholder="Search reflections & keywords..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-9 pr-3 py-1.5 text-xs rounded-lg bg-white border border-stone-300 placeholder-stone-400 text-stone-900 focus:outline-none focus:ring-2 focus:ring-stone-400 focus:border-transparent transition-all"
-            />
+            <div className="flex items-center gap-1 shrink-0">
+              {/* 1-Click Desktop Collapse Button */}
+              {onToggleDesktopCollapse && (
+                <button
+                  type="button"
+                  onClick={onToggleDesktopCollapse}
+                  className="hidden lg:flex p-1.5 rounded-lg hover:bg-stone-200/50 transition-colors"
+                  style={{ color: currentTheme.textMuted }}
+                  title="Full Screen Dashboard (Collapse Sidebar)"
+                >
+                  <PanelLeftClose className="w-4 h-4" />
+                </button>
+              )}
+
+              {/* 3-Dots Action Menu */}
+              <div className="relative" ref={headerMenuRef}>
+                <button
+                  id="sidebar-3dots-menu-button"
+                  type="button"
+                  onClick={() => setIsHeaderMenuOpen(!isHeaderMenuOpen)}
+                  className="p-1.5 rounded-lg hover:bg-stone-200/50 transition-colors cursor-pointer"
+                  style={{ color: currentTheme.textMain }}
+                  title="Sidebar & Dashboard Options"
+                >
+                  <MoreVertical className="w-4 h-4" />
+                </button>
+
+                {isHeaderMenuOpen && (
+                  <div
+                    className="absolute right-0 top-full mt-1.5 w-60 rounded-xl shadow-xl py-1.5 z-50 animate-fade-in border text-xs"
+                    style={{
+                      backgroundColor: currentTheme.bgSurface,
+                      borderColor: currentTheme.borderColor,
+                      color: currentTheme.textMain,
+                    }}
+                  >
+                    <div
+                      className="px-3 py-1 text-[10px] font-bold uppercase tracking-wider border-b opacity-60"
+                      style={{ borderColor: currentTheme.borderColor }}
+                    >
+                      Dashboard Options
+                    </div>
+
+                    {onToggleDesktopCollapse && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsHeaderMenuOpen(false);
+                          onToggleDesktopCollapse();
+                        }}
+                        className="w-full px-3 py-2 text-left hover:opacity-80 flex items-center gap-2.5 transition-colors cursor-pointer"
+                      >
+                        <Maximize2 className="w-4 h-4 text-amber-500 shrink-0" />
+                        <div className="flex-1 min-w-0">
+                          <div className="font-semibold">Full Screen Dashboard</div>
+                          <div className="text-[10px]" style={{ color: currentTheme.textMuted }}>
+                            Hide sidebar for full-width focus
+                          </div>
+                        </div>
+                      </button>
+                    )}
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsHeaderMenuOpen(false);
+                        onNewEntry();
+                        onCloseMobile();
+                      }}
+                      className="w-full px-3 py-2 text-left hover:opacity-80 flex items-center gap-2.5 transition-colors cursor-pointer"
+                    >
+                      <Plus className="w-4 h-4 text-emerald-500 shrink-0" />
+                      <div className="flex-1 min-w-0">
+                        <div className="font-semibold">New Reflection</div>
+                        <div className="text-[10px]" style={{ color: currentTheme.textMuted }}>
+                          Start fresh contemplation
+                        </div>
+                      </div>
+                    </button>
+
+                    {onOpenMoodInsights && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsHeaderMenuOpen(false);
+                          onOpenMoodInsights();
+                          onCloseMobile();
+                        }}
+                        className="w-full px-3 py-2 text-left hover:opacity-80 flex items-center gap-2.5 transition-colors cursor-pointer"
+                      >
+                        <BarChart3 className="w-4 h-4 text-amber-500 shrink-0" />
+                        <div className="flex-1 min-w-0">
+                          <div className="font-semibold">30-Day Mood Insights</div>
+                          <div className="text-[10px]" style={{ color: currentTheme.textMuted }}>
+                            View local D3.js visualization
+                          </div>
+                        </div>
+                      </button>
+                    )}
+
+                    {onOpenThemeCustomizer && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsHeaderMenuOpen(false);
+                          onOpenThemeCustomizer();
+                        }}
+                        className="w-full px-3 py-2 text-left hover:opacity-80 flex items-center gap-2.5 transition-colors cursor-pointer"
+                      >
+                        <Palette className="w-4 h-4 text-purple-500 shrink-0" />
+                        <div className="flex-1 min-w-0">
+                          <div className="font-semibold">Themes & Personalization</div>
+                          <div className="text-[10px]" style={{ color: currentTheme.textMuted }}>
+                            Change atmosphere & styles
+                          </div>
+                        </div>
+                      </button>
+                    )}
+
+                    {searchQuery && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsHeaderMenuOpen(false);
+                          setSearchQuery('');
+                          setSelectedCategory('All');
+                        }}
+                        className="w-full px-3 py-2 text-left hover:opacity-80 flex items-center gap-2.5 border-t transition-colors cursor-pointer"
+                        style={{ borderColor: currentTheme.borderColor }}
+                      >
+                        <RotateCcw className="w-4 h-4 text-stone-400 shrink-0" />
+                        <div className="flex-1 min-w-0">
+                          <div className="font-semibold">Reset Search Filters</div>
+                        </div>
+                      </button>
+                    )}
+
+                    {/* Mobile Close */}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsHeaderMenuOpen(false);
+                        onCloseMobile();
+                      }}
+                      className="lg:hidden w-full px-3 py-2 text-left hover:opacity-80 flex items-center gap-2.5 border-t transition-colors cursor-pointer"
+                      style={{ borderColor: currentTheme.borderColor }}
+                    >
+                      <X className="w-4 h-4 text-rose-500 shrink-0" />
+                      <span className="font-semibold">Close Sidebar</span>
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              {/* Mobile Close Button */}
+              <button
+                type="button"
+                onClick={onCloseMobile}
+                className="lg:hidden p-1.5 rounded-lg hover:bg-stone-200/50 transition-colors"
+                style={{ color: currentTheme.textMain }}
+                title="Close sidebar"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
           </div>
 
-          {/* 30-Day D3.js Mood Insights Launcher */}
-          {onOpenMoodInsights && (
-            <button
-              id="sidebar-mood-insights-button"
-              type="button"
-              onClick={() => {
-                onOpenMoodInsights();
-                onCloseMobile();
+          {/* Search Input */}
+          <div className="relative">
+            <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2" style={{ color: currentTheme.textMuted }} />
+            <input
+              id="sidebar-search-input"
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search encrypted reflections..."
+              className="w-full pl-8.5 pr-8 py-1.5 text-xs rounded-xl border focus:outline-none transition-all"
+              style={{
+                backgroundColor: currentTheme.bgMain,
+                borderColor: currentTheme.borderColor,
+                color: currentTheme.textMain,
               }}
-              className="w-full flex items-center justify-between px-3 py-2 mt-2.5 rounded-xl bg-amber-50 hover:bg-amber-100/70 border border-amber-200/80 text-amber-900 text-xs font-semibold transition-all shadow-2xs cursor-pointer"
-              title="Open D3.js Mood Insights (Local Enclave 30-Day Frequency Analysis)"
-            >
-              <div className="flex items-center gap-2">
-                <BarChart3 className="w-4 h-4 text-amber-600" />
-                <span>30-Day Mood Insights</span>
-              </div>
-              <span className="text-[10px] bg-amber-200/70 text-amber-900 px-1.5 py-0.5 rounded font-mono font-bold">
-                D3.js
-              </span>
-            </button>
-          )}
+            />
+            {searchQuery && (
+              <button
+                type="button"
+                onClick={() => setSearchQuery('')}
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 p-0.5 rounded hover:opacity-80 transition-opacity"
+                style={{ color: currentTheme.textMuted }}
+                title="Clear search"
+              >
+                <X className="w-3 h-3" />
+              </button>
+            )}
+          </div>
 
           {/* Category Filter Pills */}
-          <div className="flex items-center gap-1.5 overflow-x-auto mt-3 pb-1 scrollbar-none">
-            {CATEGORIES.map((cat) => (
-              <button
-                key={cat}
-                type="button"
-                onClick={() => setSelectedCategory(cat)}
-                className={`whitespace-nowrap px-2.5 py-1 rounded-md text-[11px] font-medium transition-colors ${
-                  selectedCategory === cat
-                    ? 'bg-stone-800 text-white'
-                    : 'bg-stone-200/70 hover:bg-stone-200 text-stone-700'
-                }`}
-              >
-                {cat}
-              </button>
-            ))}
+          <div className="flex items-center gap-1 overflow-x-auto pb-1 no-scrollbar text-[11px]">
+            {CATEGORIES.map((category) => {
+              const isActive = selectedCategory === category;
+              return (
+                <button
+                  key={category}
+                  type="button"
+                  onClick={() => setSelectedCategory(category)}
+                  className="px-2.5 py-1 rounded-lg font-medium whitespace-nowrap transition-all text-[11px] border"
+                  style={{
+                    backgroundColor: isActive
+                      ? ACCENT_COLORS[accentColorId].hex
+                      : currentTheme.bgMain,
+                    borderColor: isActive
+                      ? ACCENT_COLORS[accentColorId].hex
+                      : currentTheme.borderColor,
+                    color: isActive ? '#ffffff' : currentTheme.textMuted,
+                  }}
+                >
+                  {category}
+                </button>
+              );
+            })}
           </div>
         </div>
 
@@ -194,11 +406,16 @@ export const Sidebar: React.FC<SidebarProps> = ({
                     onSelectEntry(entry);
                     onCloseMobile();
                   }}
-                  className={`group relative p-3 rounded-xl border transition-all cursor-pointer ${
-                    isSelected
-                      ? 'bg-white border-stone-800/40 shadow-xs ring-1 ring-stone-800/20'
-                      : 'bg-white/70 hover:bg-white border-stone-200 hover:border-stone-300'
-                  }`}
+                  style={{
+                    backgroundColor: isSelected
+                      ? `${ACCENT_COLORS[accentColorId].hex}12`
+                      : currentTheme.bgMain,
+                    borderColor: isSelected
+                      ? ACCENT_COLORS[accentColorId].hex
+                      : currentTheme.borderColor,
+                    color: currentTheme.textMain,
+                  }}
+                  className="group relative p-3 rounded-xl border transition-all cursor-pointer shadow-2xs hover:shadow-xs"
                 >
                   <div className="flex items-start justify-between gap-2">
                     <div className="flex items-center gap-1.5 min-w-0">
@@ -207,7 +424,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
                           {entry.mood.split(' ')[0]}
                         </span>
                       )}
-                      <h4 className="text-xs font-semibold text-stone-900 line-clamp-1 leading-snug">
+                      <h4
+                        className="text-xs font-semibold line-clamp-1 leading-snug"
+                        style={{ color: currentTheme.textMain }}
+                      >
                         {entry.title || 'Untitled Reflection'}
                       </h4>
                     </div>
@@ -217,7 +437,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
                         e.stopPropagation();
                         setEntryToDelete(entry.id);
                       }}
-                      className="opacity-0 group-hover:opacity-100 text-stone-400 hover:text-red-600 transition-opacity p-1 -mr-1 -mt-1 rounded"
+                      className="opacity-0 group-hover:opacity-100 transition-opacity p-1 -mr-1 -mt-1 rounded hover:bg-rose-50 hover:text-rose-600"
+                      style={{ color: currentTheme.textMuted }}
                       title="Delete reflection"
                     >
                       <Trash2 className="w-3.5 h-3.5" />
@@ -225,29 +446,68 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   </div>
 
                   {entry.summary ? (
-                    <p className="text-[11px] text-stone-500 line-clamp-2 mt-1 leading-relaxed">
+                    <p
+                      className="text-[11px] line-clamp-2 mt-1 leading-relaxed"
+                      style={{ color: currentTheme.textMuted }}
+                    >
                       {entry.summary}
                     </p>
-                  ) : entry.messages.length > 0 ? (
-                    <p className="text-[11px] text-stone-400 line-clamp-2 mt-1 leading-relaxed italic">
+                  ) : entry.messages && entry.messages.length > 0 ? (
+                    <p
+                      className="text-[11px] line-clamp-2 mt-1 leading-relaxed italic"
+                      style={{ color: currentTheme.textMuted }}
+                    >
                       "{entry.messages[0].content}"
                     </p>
                   ) : null}
 
+                  {/* Stickers & Tags Row */}
+                  {entry.stickers && entry.stickers.length > 0 && (
+                    <div className="flex flex-wrap gap-1 mt-1.5">
+                      {entry.stickers.slice(0, 3).map((stkId) => {
+                        const s = JOURNAL_STICKERS.find((item) => item.id === stkId);
+                        if (!s) return null;
+                        return (
+                          <span
+                            key={stkId}
+                            className={`inline-flex items-center gap-0.5 text-[9px] px-1.5 py-0.5 rounded font-medium border ${s.colorClass}`}
+                          >
+                            <span>{s.emoji}</span>
+                            <span>{s.label}</span>
+                          </span>
+                        );
+                      })}
+                      {entry.stickers.length > 3 && (
+                        <span className="text-[9px] self-center opacity-70" style={{ color: currentTheme.textMuted }}>
+                          +{entry.stickers.length - 3}
+                        </span>
+                      )}
+                    </div>
+                  )}
+
                   {/* Pinned Location Tag */}
                   {entry.location && (
-                    <div className="flex items-center gap-1 mt-1.5 text-[10px] text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded-md w-fit max-w-full truncate">
+                    <div className="flex items-center gap-1 mt-1.5 text-[10px] text-emerald-700 bg-emerald-50 dark:bg-emerald-950/40 dark:text-emerald-300 px-1.5 py-0.5 rounded-md w-fit max-w-full truncate border border-emerald-200/50">
                       <MapPin className="w-2.5 h-2.5 shrink-0 text-emerald-600" />
                       <span className="truncate">{entry.location.name}</span>
                     </div>
                   )}
 
-                  <div className="flex items-center justify-between gap-2 mt-2 pt-2 border-t border-stone-100 text-[10px] text-stone-400">
-                    <span className="flex items-center gap-1">
+                  <div
+                    className="flex items-center justify-between gap-2 mt-2 pt-2 border-t text-[10px]"
+                    style={{ borderColor: currentTheme.borderColor }}
+                  >
+                    <span className="flex items-center gap-1" style={{ color: currentTheme.textMuted }}>
                       <Calendar className="w-3 h-3" />
                       {formatDate(entry.updatedAt || entry.createdAt)}
                     </span>
-                    <span className="px-1.5 py-0.5 rounded bg-stone-100 text-stone-600 font-medium text-[10px]">
+                    <span
+                      className="px-1.5 py-0.5 rounded font-medium text-[10px]"
+                      style={{
+                        backgroundColor: `${ACCENT_COLORS[accentColorId].hex}15`,
+                        color: ACCENT_COLORS[accentColorId].hex,
+                      }}
+                    >
                       {entry.category}
                     </span>
                   </div>
@@ -258,12 +518,19 @@ export const Sidebar: React.FC<SidebarProps> = ({
         </div>
 
         {/* Footer info */}
-        <div className="p-3 border-t border-stone-200 bg-stone-100/70 text-[11px] text-stone-500 flex items-center justify-between">
-          <span className="flex items-center gap-1.5 font-medium">
-            <Sparkles className="w-3 h-3 text-amber-600" />
+        <div
+          className="p-3 border-t text-[11px] flex items-center justify-between"
+          style={{
+            borderColor: currentTheme.borderColor,
+            backgroundColor: `${currentTheme.bgMain}80`,
+            color: currentTheme.textMuted,
+          }}
+        >
+          <span className="flex items-center gap-1.5 font-medium" style={{ color: currentTheme.textMain }}>
+            <Sparkles className="w-3 h-3 text-amber-500" />
             {entries.length} {entries.length === 1 ? 'entry' : 'entries'} saved
           </span>
-          <span className="text-[10px] text-stone-400">Firestore Sync Active</span>
+          <span className="text-[10px]">Firestore Sync Active</span>
         </div>
       </aside>
 
