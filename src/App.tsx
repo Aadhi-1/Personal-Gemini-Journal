@@ -9,7 +9,7 @@ import {
   deleteInteraction,
   subscribeToUserInteractions,
 } from './firebase';
-import { InteractionEntry } from './types';
+import { InteractionEntry, JournalLocation } from './types';
 import { Navbar } from './components/Navbar';
 import { LandingPage } from './components/LandingPage';
 import { Sidebar } from './components/Sidebar';
@@ -24,6 +24,7 @@ import { VoiceCommandGuideModal } from './components/VoiceCommandGuideModal';
 import { AdminDashboardModal } from './components/AdminDashboardModal';
 import { ThemeCustomizerModal } from './components/ThemeCustomizerModal';
 import { VoiceCheckInModal } from './components/VoiceCheckInModal';
+import { ReflectionsMapModal } from './components/ReflectionsMapModal';
 import { Sparkles } from 'lucide-react';
 import { useTheme, ACCENT_COLORS } from './theme/ThemeContext';
 import { enclave, logSecurityEvent } from './crypto/workerClient';
@@ -36,6 +37,12 @@ const DURESS_DECOY_ENTRIES: InteractionEntry[] = [
     category: 'Gratitude',
     mode: 'reflection',
     mood: '🌸 Serene',
+    location: {
+      name: 'Singapore Botanic Gardens Conservatory',
+      formattedAddress: '1 Cluny Rd, Singapore 259569',
+      lat: 1.3138,
+      lng: 103.8159,
+    },
     messages: [
       {
         id: 'msg-d1-1',
@@ -60,6 +67,12 @@ const DURESS_DECOY_ENTRIES: InteractionEntry[] = [
     category: 'Personal Reflection',
     mode: 'reflection',
     mood: '✨ Inspired',
+    location: {
+      name: 'Lake Louise Alpine Lodge',
+      formattedAddress: 'Banff National Park, Alberta, Canada',
+      lat: 51.4254,
+      lng: -116.1773,
+    },
     messages: [
       {
         id: 'msg-d2-1',
@@ -99,6 +112,7 @@ export default function App() {
   const [isMoodInsightsOpen, setIsMoodInsightsOpen] = useState(false);
   const [isVoiceGuideOpen, setIsVoiceGuideOpen] = useState(false);
   const [isAdminDashboardOpen, setIsAdminDashboardOpen] = useState(false);
+  const [isReflectionsMapOpen, setIsReflectionsMapOpen] = useState(false);
   const [simulatedRole, setSimulatedRole] = useState<'superadmin' | 'admin' | 'user'>('superadmin');
 
   // Atmosphere, Custom Themes & Voice Concierge
@@ -230,11 +244,17 @@ export default function App() {
       category: 'Personal Reflection',
       mode: 'reflection',
       mood: '✨ Inspired',
+      location: {
+        name: 'Kyoto Arashiyama Bamboo Grove',
+        formattedAddress: 'Ukyo Ward, Kyoto 616-8385, Japan',
+        lat: 35.0169,
+        lng: 135.6713,
+      },
       messages: [
         {
           id: 'msg-welcome-1',
           role: 'model',
-          content: `Welcome to **ReflectAI**! 🌿\n\nI am your contemplative AI companion powered by **Gemini 3.6 Flash**. You are currently exploring in **Guest Mode**.\n\n### 🌟 Features ready for you:\n- 📷 **Photos & GIFs**: Click **+ Photo/GIF** in the header or prompt ribbon to attach images or search trending GIFs.\n- 🌐 **Google Search Grounding**: Toggle Google Grounding **ON** to synthesize live web facts with verified citations.\n- 🔮 **Gemini Mindful Tools**: Click **Gemini Tools** to launch Cognitive Reframing, Action Step Synthesizer, or Perspective Switcher.\n- 🎙️ **Ambient Voice**: Audition our 5 voice personas or trigger hands-free check-ins.\n\nWhenever you want to securely save and encrypt your reflections in Cloud Firestore, click **Sign In with Google** at the top right!`,
+          content: `Welcome to **ReflectAI**! 🌿\n\nI am your contemplative AI companion powered by **Gemini 3.6 Flash**. You are currently exploring in **Guest Mode**.\n\n### 🌟 Features ready for you:\n- 🗺️ **Google Maps Platform**: Explore our interactive **Reflections World Map** or pin any physical sanctuary.\n- 📷 **Photos & GIFs**: Click **+ Photo/GIF** in the header or prompt ribbon to attach images or search trending GIFs.\n- 🌐 **Google Search Grounding**: Toggle Google Grounding **ON** to synthesize live web facts with verified citations.\n- 🔮 **Gemini Mindful Tools**: Click **Gemini Tools** to launch Cognitive Reframing, Action Step Synthesizer, or Perspective Switcher.\n- 🎙️ **Ambient Voice**: Audition our 5 voice personas or trigger hands-free check-ins.\n\nWhenever you want to securely save and encrypt your reflections in Cloud Firestore, click **Sign In with Google** at the top right!`,
           timestamp: new Date().toISOString(),
         },
       ],
@@ -263,15 +283,16 @@ export default function App() {
   };
 
   // Create a new reflection session
-  const handleCreateNewEntry = () => {
+  const handleCreateNewEntry = (initialLocation?: JournalLocation) => {
     const activeUid = currentUser ? currentUser.uid : 'guest-explorer';
 
     const newEntry: InteractionEntry = {
       id: `reflection-${Date.now()}`,
       userId: activeUid,
-      title: 'New Reflection',
+      title: initialLocation ? `Reflection at ${initialLocation.name}` : 'New Reflection',
       category: 'Personal Reflection',
       mode: 'reflection',
+      location: initialLocation,
       messages: [],
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
@@ -434,6 +455,7 @@ export default function App() {
           onOpenMoodInsights={() => setIsMoodInsightsOpen(true)}
           onOpenVoiceGuide={() => setIsVoiceGuideOpen(true)}
           onOpenAdminDashboard={() => setIsAdminDashboardOpen(true)}
+          onOpenReflectionsMap={() => setIsReflectionsMapOpen(true)}
           isAdmin={isActualAdmin}
           isDuressDecoy={isDuressDecoy}
         />
@@ -459,6 +481,7 @@ export default function App() {
               onCloseMobile={() => setIsMobileSidebarOpen(false)}
               onOpenMoodInsights={() => setIsMoodInsightsOpen(true)}
               onOpenThemeCustomizer={() => setIsThemeCustomizerOpen(true)}
+              onOpenReflectionsMap={() => setIsReflectionsMapOpen(true)}
               isDesktopCollapsed={isDesktopSidebarCollapsed}
               onToggleDesktopCollapse={() => setIsDesktopSidebarCollapsed(!isDesktopSidebarCollapsed)}
               user={currentUser}
@@ -507,7 +530,7 @@ export default function App() {
                   <button
                     id="empty-state-new-reflection-button"
                     type="button"
-                    onClick={handleCreateNewEntry}
+                    onClick={() => handleCreateNewEntry()}
                     className="px-6 py-2.5 rounded-xl text-white text-xs font-semibold hover:opacity-90 active:scale-95 transition-all shadow-xs cursor-pointer"
                     style={{ backgroundColor: ACCENT_COLORS[accentColorId].hex }}
                   >
@@ -588,6 +611,20 @@ export default function App() {
           isOpen={isThemeCustomizerOpen}
           onClose={() => setIsThemeCustomizerOpen(false)}
           onOpenVoiceCheckIn={() => setIsVoiceCheckInOpen(true)}
+        />
+
+        {/* Google Maps Reflections World Map Modal */}
+        <ReflectionsMapModal
+          isOpen={isReflectionsMapOpen}
+          onClose={() => setIsReflectionsMapOpen(false)}
+          entries={entries}
+          onSelectEntry={(entry) => {
+            setSelectedEntry(entry);
+            setIsReflectionsMapOpen(false);
+          }}
+          onCreateWithLocation={(loc) => {
+            handleCreateNewEntry(loc);
+          }}
         />
 
         {/* Voice Reflection Concierge Modal (Post-Login & On-Demand) */}

@@ -15,6 +15,7 @@ import {
   MoreVertical,
   X,
   ChevronRight,
+  MapPin,
 } from 'lucide-react';
 import { useTheme, ACCENT_COLORS } from '../theme/ThemeContext';
 
@@ -32,6 +33,7 @@ interface NavbarProps {
   onOpenAdminDashboard?: () => void;
   onOpenThemeCustomizer?: () => void;
   onOpenVoiceCheckIn?: () => void;
+  onOpenReflectionsMap?: () => void;
   isAdmin?: boolean;
   isDuressDecoy?: boolean;
 }
@@ -50,6 +52,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   onOpenAdminDashboard,
   onOpenThemeCustomizer,
   onOpenVoiceCheckIn,
+  onOpenReflectionsMap,
   isAdmin,
   isDuressDecoy,
 }) => {
@@ -149,6 +152,25 @@ export const Navbar: React.FC<NavbarProps> = ({
             >
               <MessageSquareQuote className="w-4 h-4 text-amber-500" />
               <span>{activeVoice.name} Mode</span>
+            </button>
+          )}
+
+          {/* Reflections World Map Button */}
+          {onOpenReflectionsMap && (
+            <button
+              id="open-reflections-map-header-button"
+              type="button"
+              onClick={onOpenReflectionsMap}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold border shadow-2xs hover:scale-105 active:scale-95 transition-all cursor-pointer"
+              style={{
+                borderColor: currentTheme.borderColor,
+                backgroundColor: currentTheme.bgSurface,
+                color: currentTheme.textMain,
+              }}
+              title="Explore Reflections across the globe on Google Maps"
+            >
+              <MapPin className="w-4 h-4 text-emerald-500" />
+              <span>World Map</span>
             </button>
           )}
 
@@ -268,6 +290,24 @@ export const Navbar: React.FC<NavbarProps> = ({
             >
               <Mic className="w-4 h-4 animate-pulse" />
               <span>Voice</span>
+            </button>
+          )}
+
+          {/* Quick World Map on tablet */}
+          {onOpenReflectionsMap && (
+            <button
+              id="tablet-reflections-map-quick"
+              type="button"
+              onClick={onOpenReflectionsMap}
+              className="hidden md:flex xl:hidden p-2 rounded-xl border shadow-2xs active:scale-95 transition-all cursor-pointer shrink-0"
+              style={{
+                borderColor: currentTheme.borderColor,
+                backgroundColor: currentTheme.bgSurface,
+                color: currentTheme.textMain,
+              }}
+              title="Explore Reflections World Map"
+            >
+              <MapPin className="w-4 h-4 text-emerald-500" />
             </button>
           )}
 
@@ -554,6 +594,30 @@ export const Navbar: React.FC<NavbarProps> = ({
                         <span className="text-[10px] px-2 py-0.5 rounded-full font-semibold border" style={{ borderColor: currentTheme.borderColor }}>
                           Switch
                         </span>
+                      </button>
+                    )}
+
+                    {onOpenReflectionsMap && (
+                      <button
+                        id="mobile-menu-reflections-map-button"
+                        type="button"
+                        onClick={() => {
+                          setIsMobileMenuOpen(false);
+                          onOpenReflectionsMap();
+                        }}
+                        className="w-full flex items-center justify-between p-3 rounded-xl border hover:opacity-90 transition-all text-left"
+                        style={{ borderColor: currentTheme.borderColor }}
+                      >
+                        <div className="flex items-center gap-3">
+                          <MapPin className="w-5 h-5 text-emerald-500" />
+                          <div>
+                            <div className="text-xs font-bold">Reflections World Map</div>
+                            <div className="text-[11px]" style={{ color: currentTheme.textMuted }}>
+                              Google Maps Platform sanctuary visualizer
+                            </div>
+                          </div>
+                        </div>
+                        <ChevronRight className="w-4 h-4 opacity-50" />
                       </button>
                     )}
 
