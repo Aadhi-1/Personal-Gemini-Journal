@@ -327,26 +327,26 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({
   return (
     <div
       id="admin-dashboard-modal"
-      className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-stone-900/60 backdrop-blur-md animate-in fade-in duration-200"
+      className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-stone-900/60 backdrop-blur-md animate-in fade-in duration-200"
     >
-      <div className="bg-white rounded-3xl shadow-2xl border border-stone-200 w-full max-w-4xl max-h-[92vh] flex flex-col overflow-hidden">
+      <div className="bg-white rounded-2xl sm:rounded-3xl shadow-2xl border border-stone-200 w-full max-w-4xl max-h-[94vh] sm:max-h-[92vh] flex flex-col overflow-hidden">
         {/* Header */}
-        <div className="px-6 py-4.5 border-b border-stone-200 bg-stone-50 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-indigo-600 text-white flex items-center justify-center shadow-sm">
-              <Shield className="w-5 h-5" />
+        <div className="px-4 sm:px-6 py-3.5 sm:py-4.5 border-b border-stone-200 bg-stone-50 flex items-center justify-between">
+          <div className="flex items-center gap-2.5 sm:gap-3">
+            <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-2xl bg-indigo-600 text-white flex items-center justify-center shadow-sm shrink-0">
+              <Shield className="w-4 h-4 sm:w-5 sm:h-5" />
             </div>
             <div>
-              <div className="flex items-center gap-2">
-                <h2 className="text-lg font-bold text-stone-900">Admin Control Center</h2>
-                <span className="text-[11px] px-2.5 py-0.5 rounded-full bg-indigo-100 text-indigo-900 font-semibold border border-indigo-200">
+              <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
+                <h2 className="text-base sm:text-lg font-bold text-stone-900">Admin Control Center</h2>
+                <span className="text-[10px] sm:text-[11px] px-2 sm:px-2.5 py-0.5 rounded-full bg-indigo-100 text-indigo-900 font-semibold border border-indigo-200">
                   RBAC & Directives
                 </span>
-                <span className="text-[11px] px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 font-medium">
+                <span className="hidden sm:inline text-[11px] px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 font-medium">
                   Active
                 </span>
               </div>
-              <p className="text-xs text-stone-500">
+              <p className="text-[11px] sm:text-xs text-stone-500 line-clamp-1">
                 Enforced Role Security • External Webhook Integrations • Real-Time Audit Logs
               </p>
             </div>
@@ -355,70 +355,70 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({
             id="close-admin-dashboard-btn"
             type="button"
             onClick={onClose}
-            className="w-9 h-9 rounded-xl text-stone-500 hover:text-stone-800 hover:bg-stone-200/60 transition-colors flex items-center justify-center"
+            className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl text-stone-500 hover:text-stone-800 hover:bg-stone-200/60 transition-colors flex items-center justify-center shrink-0 ml-2"
           >
-            <X className="w-5 h-5" />
+            <X className="w-4 h-4 sm:w-5 sm:h-5" />
           </button>
         </div>
 
         {/* Tab Navigation */}
-        <div className="flex border-b border-stone-200 bg-white px-6 gap-2 pt-2 text-xs font-semibold select-none overflow-x-auto">
+        <div className="flex border-b border-stone-200 bg-white px-4 sm:px-6 gap-1 sm:gap-2 pt-2 text-xs font-semibold select-none overflow-x-auto no-scrollbar shrink-0">
           <button
             id="tab-rbac"
             type="button"
             onClick={() => setActiveTab('rbac')}
-            className={`flex items-center gap-2 pb-3 px-3 border-b-2 transition-colors whitespace-nowrap ${
+            className={`flex items-center gap-2 pb-3 px-2.5 sm:px-3 border-b-2 transition-colors whitespace-nowrap ${
               activeTab === 'rbac'
                 ? 'border-indigo-600 text-indigo-900 font-bold'
                 : 'border-transparent text-stone-500 hover:text-stone-800'
             }`}
           >
             <Layers className="w-4 h-4" />
-            <span>Role-Based Access Control (RBAC)</span>
+            <span>Role-Based Access Control</span>
           </button>
           <button
             id="tab-notifications"
             type="button"
             onClick={() => setActiveTab('notifications')}
-            className={`flex items-center gap-2 pb-3 px-3 border-b-2 transition-colors whitespace-nowrap ${
+            className={`flex items-center gap-2 pb-3 px-2.5 sm:px-3 border-b-2 transition-colors whitespace-nowrap ${
               activeTab === 'notifications'
                 ? 'border-indigo-600 text-indigo-900 font-bold'
                 : 'border-transparent text-stone-500 hover:text-stone-800'
             }`}
           >
             <Bell className="w-4 h-4" />
-            <span>External Webhooks (Slack/Discord/Email)</span>
+            <span>External Webhooks</span>
           </button>
           <button
             id="tab-telemetry"
             type="button"
             onClick={() => setActiveTab('telemetry')}
-            className={`flex items-center gap-2 pb-3 px-3 border-b-2 transition-colors whitespace-nowrap ${
+            className={`flex items-center gap-2 pb-3 px-2.5 sm:px-3 border-b-2 transition-colors whitespace-nowrap ${
               activeTab === 'telemetry'
                 ? 'border-indigo-600 text-indigo-900 font-bold'
                 : 'border-transparent text-stone-500 hover:text-stone-800'
             }`}
           >
             <Activity className="w-4 h-4" />
-            <span>Telemetry & Health</span>
+            <span>Telemetry</span>
           </button>
           <button
             id="tab-audit"
             type="button"
             onClick={() => setActiveTab('audit')}
-            className={`flex items-center gap-2 pb-3 px-3 border-b-2 transition-colors whitespace-nowrap ${
+            className={`flex items-center gap-2 pb-3 px-2.5 sm:px-3 border-b-2 transition-colors whitespace-nowrap ${
               activeTab === 'audit'
                 ? 'border-indigo-600 text-indigo-900 font-bold'
                 : 'border-transparent text-stone-500 hover:text-stone-800'
             }`}
           >
             <FileText className="w-4 h-4" />
-            <span>Audit Trail Logs ({auditLogs.length})</span>
+            <span>Audit Trail ({auditLogs.length})</span>
           </button>
         </div>
 
         {/* Tab Body */}
-        <div className="p-6 overflow-y-auto space-y-6 flex-1 bg-stone-50/50">
+        <div className="p-3.5 sm:p-6 overflow-y-auto space-y-4 sm:space-y-6 flex-1 bg-stone-50/50">
           {/* TAB 1: RBAC & ADMIN ROLES DIRECTIVE */}
           {activeTab === 'rbac' && (
             <div className="space-y-6">

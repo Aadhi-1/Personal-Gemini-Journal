@@ -269,11 +269,11 @@ export const MediaPickerModal: React.FC<MediaPickerModalProps> = ({
   return (
     <div
       id="media-picker-modal-backdrop"
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-150"
+      className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-150"
     >
       <div
         id="media-picker-modal"
-        className="w-full max-w-2xl rounded-2xl border shadow-2xl overflow-hidden flex flex-col max-h-[90vh] transition-colors"
+        className="w-full max-w-2xl rounded-2xl border shadow-2xl overflow-hidden flex flex-col max-h-[92vh] sm:max-h-[90vh] transition-colors"
         style={{
           backgroundColor: currentTheme.bgSurface,
           borderColor: currentTheme.borderColor,
@@ -282,10 +282,10 @@ export const MediaPickerModal: React.FC<MediaPickerModalProps> = ({
       >
         {/* Header */}
         <div
-          className="px-6 py-4 border-b flex items-center justify-between"
+          className="px-4 sm:px-6 py-3 sm:py-4 border-b flex items-center justify-between"
           style={{ borderColor: currentTheme.borderColor }}
         >
-          <div className="flex items-center gap-2.5">
+          <div className="flex items-center gap-2 sm:gap-2.5">
             <div
               className="w-8 h-8 rounded-xl flex items-center justify-center text-white shrink-0 shadow-xs"
               style={{ backgroundColor: ACCENT_COLORS[accentColorId].hex }}
@@ -293,9 +293,9 @@ export const MediaPickerModal: React.FC<MediaPickerModalProps> = ({
               {activeTab === 'gif' ? <Film className="w-4 h-4" /> : <ImageIcon className="w-4 h-4" />}
             </div>
             <div>
-              <h3 className="font-bold text-sm sm:text-base">Attach Photo or Emotion GIF</h3>
-              <p className="text-[11px] opacity-75" style={{ color: currentTheme.textMuted }}>
-                Add visual contemplation to your reflection for Gemini Multimodal Vision analysis
+              <h3 className="font-bold text-xs sm:text-base truncate">Attach Photo or Emotion GIF</h3>
+              <p className="text-[10px] sm:text-[11px] opacity-75 line-clamp-1" style={{ color: currentTheme.textMuted }}>
+                Add visual contemplation to your reflection for Gemini Vision analysis
               </p>
             </div>
           </div>
@@ -303,7 +303,7 @@ export const MediaPickerModal: React.FC<MediaPickerModalProps> = ({
           <button
             type="button"
             onClick={onClose}
-            className="p-1.5 rounded-lg border hover:bg-stone-100 dark:hover:bg-stone-800 transition-colors cursor-pointer"
+            className="p-1.5 rounded-lg border hover:bg-stone-100 dark:hover:bg-stone-800 transition-colors cursor-pointer shrink-0"
             style={{ borderColor: currentTheme.borderColor }}
           >
             <X className="w-4 h-4" />
@@ -312,7 +312,7 @@ export const MediaPickerModal: React.FC<MediaPickerModalProps> = ({
 
         {/* Tab Navigation */}
         <div
-          className="flex border-b px-6 pt-3 gap-2 shrink-0 overflow-x-auto"
+          className="flex border-b px-4 sm:px-6 pt-2.5 sm:pt-3 gap-1.5 sm:gap-2 shrink-0 overflow-x-auto no-scrollbar"
           style={{ borderColor: currentTheme.borderColor }}
         >
           <button
@@ -321,7 +321,7 @@ export const MediaPickerModal: React.FC<MediaPickerModalProps> = ({
               setActiveTab('upload');
               setErrorMessage(null);
             }}
-            className={`pb-2.5 px-3 text-xs font-semibold border-b-2 flex items-center gap-1.5 cursor-pointer transition-colors ${
+            className={`pb-2.5 px-2.5 sm:px-3 text-xs font-semibold border-b-2 flex items-center gap-1.5 cursor-pointer transition-colors whitespace-nowrap ${
               activeTab === 'upload' ? 'border-amber-500 text-amber-600' : 'border-transparent opacity-70 hover:opacity-100'
             }`}
           >
@@ -335,12 +335,12 @@ export const MediaPickerModal: React.FC<MediaPickerModalProps> = ({
               setActiveTab('gif');
               setErrorMessage(null);
             }}
-            className={`pb-2.5 px-3 text-xs font-semibold border-b-2 flex items-center gap-1.5 cursor-pointer transition-colors ${
+            className={`pb-2.5 px-2.5 sm:px-3 text-xs font-semibold border-b-2 flex items-center gap-1.5 cursor-pointer transition-colors whitespace-nowrap ${
               activeTab === 'gif' ? 'border-amber-500 text-amber-600' : 'border-transparent opacity-70 hover:opacity-100'
             }`}
           >
             <Film className="w-3.5 h-3.5" />
-            <span>Emotion & Mood GIFs</span>
+            <span>Emotion GIFs</span>
           </button>
 
           <button
@@ -349,7 +349,7 @@ export const MediaPickerModal: React.FC<MediaPickerModalProps> = ({
               setActiveTab('url');
               setErrorMessage(null);
             }}
-            className={`pb-2.5 px-3 text-xs font-semibold border-b-2 flex items-center gap-1.5 cursor-pointer transition-colors ${
+            className={`pb-2.5 px-2.5 sm:px-3 text-xs font-semibold border-b-2 flex items-center gap-1.5 cursor-pointer transition-colors whitespace-nowrap ${
               activeTab === 'url' ? 'border-amber-500 text-amber-600' : 'border-transparent opacity-70 hover:opacity-100'
             }`}
           >
@@ -359,7 +359,7 @@ export const MediaPickerModal: React.FC<MediaPickerModalProps> = ({
         </div>
 
         {/* Caption Field (Optional for all modes) */}
-        <div className="px-6 pt-3 pb-1 shrink-0">
+        <div className="px-4 sm:px-6 pt-2.5 sm:pt-3 pb-1 shrink-0">
           <input
             type="text"
             placeholder="Optional caption or emotional context for this visual..."
@@ -376,14 +376,14 @@ export const MediaPickerModal: React.FC<MediaPickerModalProps> = ({
 
         {/* Error Alert */}
         {errorMessage && (
-          <div className="mx-6 my-2 p-2.5 rounded-lg bg-rose-50 border border-rose-200 text-rose-800 text-xs flex items-center gap-2">
+          <div className="mx-4 sm:mx-6 my-2 p-2.5 rounded-lg bg-rose-50 border border-rose-200 text-rose-800 text-xs flex items-center gap-2">
             <AlertCircle className="w-4 h-4 shrink-0 text-rose-600" />
             <span>{errorMessage}</span>
           </div>
         )}
 
         {/* Modal Body */}
-        <div className="p-6 overflow-y-auto flex-1">
+        <div className="p-3.5 sm:p-6 overflow-y-auto flex-1">
           {/* TAB 1: UPLOAD PHOTO */}
           {activeTab === 'upload' && (
             <div className="space-y-4">
@@ -397,7 +397,7 @@ export const MediaPickerModal: React.FC<MediaPickerModalProps> = ({
 
               <div
                 onClick={() => fileInputRef.current?.click()}
-                className="border-2 border-dashed rounded-2xl p-8 text-center cursor-pointer hover:border-amber-500 hover:bg-amber-500/5 transition-all flex flex-col items-center justify-center gap-3"
+                className="border-2 border-dashed rounded-2xl p-5 sm:p-8 text-center cursor-pointer hover:border-amber-500 hover:bg-amber-500/5 transition-all flex flex-col items-center justify-center gap-2.5 sm:gap-3"
                 style={{ borderColor: currentTheme.borderColor }}
               >
                 <div

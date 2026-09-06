@@ -88,10 +88,10 @@ class CryptoEnclaveClient {
       };
 
       this.worker.onerror = (err) => {
-        console.error('Crypto worker error:', err);
+        console.warn('Crypto worker notice:', err);
       };
-    } catch (e) {
-      console.warn('Could not initialize dedicated worker. Utilizing secure fallback enclave.', e);
+    } catch {
+      console.info('Dedicated worker enclave in fallback mode.');
     }
   }
 

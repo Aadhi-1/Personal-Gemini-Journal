@@ -24,7 +24,8 @@ import { VoiceCommandGuideModal } from './components/VoiceCommandGuideModal';
 import { AdminDashboardModal } from './components/AdminDashboardModal';
 import { ThemeCustomizerModal } from './components/ThemeCustomizerModal';
 import { VoiceCheckInModal } from './components/VoiceCheckInModal';
-import { useTheme } from './theme/ThemeContext';
+import { Sparkles } from 'lucide-react';
+import { useTheme, ACCENT_COLORS } from './theme/ThemeContext';
 import { enclave, logSecurityEvent } from './crypto/workerClient';
 
 const DURESS_DECOY_ENTRIES: InteractionEntry[] = [
@@ -101,7 +102,7 @@ export default function App() {
   const [simulatedRole, setSimulatedRole] = useState<'superadmin' | 'admin' | 'user'>('superadmin');
 
   // Atmosphere, Custom Themes & Voice Concierge
-  const { currentTheme, hasSeenVoiceCheckIn, setHasSeenVoiceCheckIn } = useTheme();
+  const { currentTheme, accentColorId, hasSeenVoiceCheckIn, setHasSeenVoiceCheckIn } = useTheme();
   const [isThemeCustomizerOpen, setIsThemeCustomizerOpen] = useState(false);
   const [isVoiceCheckInOpen, setIsVoiceCheckInOpen] = useState(false);
 
@@ -153,7 +154,7 @@ export default function App() {
 
   // Subscribe to Firestore user interactions when user is authenticated
   useEffect(() => {
-    if (!currentUser) {
+    if (!currentUser?.uid) {
       setEntries([]);
       setSelectedEntry(null);
       return;
@@ -179,24 +180,39 @@ export default function App() {
         });
       },
       (error) => {
-        console.error('Subscription error:', error);
+        // Suppress teardown errors when user signs out
+        if (error?.error?.includes('permission-denied') && !currentUser?.uid) {
+          return;
+        }
+        console.info('Subscription update notice:', error.error);
       }
     );
 
     return () => unsubscribe();
-  }, [currentUser, isDuressDecoy]);
+  }, [currentUser?.uid, isDuressDecoy]);
 
   // Handle Google Sign In
   const handleSignIn = async () => {
     try {
       setIsAuthLoading(true);
       setAuthError(null);
-      await signInWithGoogle();
-      setIsGuestMode(false);
-      logSecurityEvent('PASSKEY_AUTHENTICATED', 'INFO', 'Authenticated session initialized via Google SSO.');
+      const user = await signInWithGoogle();
+      if (user) {
+        setIsGuestMode(false);
+        logSecurityEvent('PASSKEY_AUTHENTICATED', 'INFO', 'Authenticated session initialized via Google SSO.');
+      }
     } catch (error: any) {
-      console.error('Sign in error:', error);
-      setAuthError(error.message || 'Failed to sign in with Google.');
+      if (
+        error?.code === 'auth/popup-closed-by-user' ||
+        error?.code === 'auth/cancelled-popup-request' ||
+        error?.message?.includes('popup-closed-by-user')
+      ) {
+        // User closed or dismissed the popup; no error banner or console.error needed
+        console.info('Google sign-in popup was closed by user.');
+        return;
+      }
+      console.warn('Google sign-in notice:', error?.message || error);
+      setAuthError(error?.message || 'Failed to sign in with Google.');
     } finally {
       setIsAuthLoading(false);
     }
@@ -301,7 +317,8 @@ export default function App() {
     try {
       await saveInteraction(currentUser.uid, updated);
     } catch (dbErr: any) {
-      console.error('Firestore save interaction error:', dbErr);
+      console.warn('Firestore save interaction error:', dbErr);
+      throw dbErr;
     }
   };
 
@@ -444,6 +461,10 @@ export default function App() {
               onOpenThemeCustomizer={() => setIsThemeCustomizerOpen(true)}
               isDesktopCollapsed={isDesktopSidebarCollapsed}
               onToggleDesktopCollapse={() => setIsDesktopSidebarCollapsed(!isDesktopSidebarCollapsed)}
+              user={currentUser}
+              isGuest={isGuestMode && !currentUser}
+              onSignOut={handleSignOut}
+              onSignIn={handleSignIn}
             />
 
             {/* Active Workspace */}
@@ -460,20 +481,35 @@ export default function App() {
                 onOpenMoodInsights={() => setIsMoodInsightsOpen(true)}
                 onOpenVoiceGuide={() => setIsVoiceGuideOpen(true)}
                 onOpenSecurityModal={() => setIsSecurityModalOpen(true)}
+                onSignOut={handleSignOut}
               />
             ) : (
-              <div className="flex-1 flex items-center justify-center p-8 text-center bg-white">
-                <div className="max-w-md">
-                  <h3 className="text-lg font-semibold text-stone-900 mb-2">
+              <div
+                className="flex-1 flex items-center justify-center p-8 text-center transition-colors"
+                style={{
+                  backgroundColor: currentTheme.bgSurface,
+                  color: currentTheme.textMain,
+                }}
+              >
+                <div className="max-w-md p-8 rounded-2xl border shadow-xs" style={{ borderColor: currentTheme.borderColor }}>
+                  <div
+                    className="w-12 h-12 rounded-2xl mx-auto flex items-center justify-center text-white mb-4 shadow-sm"
+                    style={{ backgroundColor: ACCENT_COLORS[accentColorId].hex }}
+                  >
+                    <Sparkles className="w-6 h-6" />
+                  </div>
+                  <h3 className="text-base font-bold mb-2" style={{ color: currentTheme.textMain }}>
                     No reflection selected
                   </h3>
-                  <p className="text-xs text-stone-500 mb-6">
+                  <p className="text-xs mb-6 leading-relaxed" style={{ color: currentTheme.textMuted }}>
                     Select a past reflection from the sidebar, or begin a fresh multi-turn contemplation with Jarvis.
                   </p>
                   <button
+                    id="empty-state-new-reflection-button"
                     type="button"
                     onClick={handleCreateNewEntry}
-                    className="px-5 py-2.5 rounded-xl bg-stone-900 text-white text-xs font-semibold hover:bg-stone-800 transition-colors shadow-xs"
+                    className="px-6 py-2.5 rounded-xl text-white text-xs font-semibold hover:opacity-90 active:scale-95 transition-all shadow-xs cursor-pointer"
+                    style={{ backgroundColor: ACCENT_COLORS[accentColorId].hex }}
                   >
                     Start New Reflection
                   </button>

@@ -32,11 +32,41 @@ export const googleProvider = new GoogleAuthProvider();
 googleProvider.setCustomParameters({ prompt: 'select_account' });
 
 /**
- * Sign in with Google using popup
+ * Sign in with Google using popup with graceful user cancellation and blocker handling
  */
-export async function signInWithGoogle(): Promise<User> {
-  const result = await signInWithPopup(auth, googleProvider);
-  return result.user;
+export async function signInWithGoogle(): Promise<User | null> {
+  try {
+    const result = await signInWithPopup(auth, googleProvider);
+    return result.user;
+  } catch (error: any) {
+    // If the user closed or cancelled the popup, handle gracefully without error logs
+    if (
+      error?.code === 'auth/popup-closed-by-user' ||
+      error?.code === 'auth/cancelled-popup-request' ||
+      error?.message?.includes('auth/popup-closed-by-user') ||
+      error?.message?.includes('popup-closed-by-user')
+    ) {
+      console.info('Google sign-in popup closed by user.');
+      return null;
+    }
+
+    if (error?.code === 'auth/popup-blocked') {
+      console.warn('Google sign-in popup was blocked by browser. Please enable popups or open in a new tab.');
+      throw new Error(
+        'Sign-in popup was blocked by your browser. Please allow popups or open the app in a new tab.'
+      );
+    }
+
+    if (error?.code === 'auth/network-request-failed') {
+      throw new Error('Network connection issue. Please verify your connection and try again.');
+    }
+
+    if (error?.code === 'auth/unauthorized-domain') {
+      throw new Error('This app domain is not yet authorized in Firebase Console Authentication settings.');
+    }
+
+    throw error;
+  }
 }
 
 /**
@@ -63,8 +93,16 @@ export function handleFirestoreError(
   operationType: OperationType,
   path: string | null
 ): FirestoreErrorInfo {
+  const errMsg = error instanceof Error ? error.message : String(error);
+  const errCode = (error as any)?.code || '';
+
+  // Suppress loud console.error when user signed out and listener is tearing down
+  const isCleanSignOutTeardown =
+    !auth.currentUser &&
+    (errCode === 'permission-denied' || errMsg.toLowerCase().includes('insufficient permissions'));
+
   const errInfo: FirestoreErrorInfo = {
-    error: error instanceof Error ? error.message : String(error),
+    error: errMsg,
     authInfo: {
       userId: auth.currentUser?.uid,
       email: auth.currentUser?.email,
@@ -80,7 +118,13 @@ export function handleFirestoreError(
     operationType,
     path,
   };
-  console.error('Firestore Error:', JSON.stringify(errInfo));
+
+  if (isCleanSignOutTeardown) {
+    console.info('Firestore subscription cleanly detached on user sign-out.');
+  } else {
+    console.warn('Firestore operational notice:', JSON.stringify(errInfo));
+  }
+
   return errInfo;
 }
 
@@ -93,10 +137,10 @@ export async function testConnection(): Promise<boolean> {
     return true;
   } catch (error) {
     if (error instanceof Error && error.message.includes('the client is offline')) {
-      console.warn('Firebase client is offline. Verify internet connection.');
+      console.info('Firebase client is offline. Verify network connection.');
       return false;
     }
-    // Permission denied confirms connection reached Firestore server
+    // Permission denied confirms connection successfully reached Firestore server
     return true;
   }
 }
@@ -105,11 +149,19 @@ export async function testConnection(): Promise<boolean> {
  * Saves or updates a user-isolated reflection interaction entry
  */
 export async function saveInteraction(userId: string, entry: InteractionEntry): Promise<void> {
-  const docPath = `users/${userId}/interactions/${entry.id}`;
+  if (!userId || !userId.trim()) {
+    console.warn('Cannot save interaction: Missing authenticated user ID.');
+    return;
+  }
+
+  const safeEntryId = entry.id || `entry-${Date.now()}`;
+  const docPath = `users/${userId}/interactions/${safeEntryId}`;
+
   try {
-    const docRef = doc(db, 'users', userId, 'interactions', entry.id);
+    const docRef = doc(db, 'users', userId, 'interactions', safeEntryId);
     const sanitizedPayload = stripUndefined({
       ...entry,
+      id: safeEntryId,
       updatedAt: new Date().toISOString(),
     });
     await setDoc(docRef, sanitizedPayload, { merge: true });
@@ -123,6 +175,8 @@ export async function saveInteraction(userId: string, entry: InteractionEntry): 
  * Deletes a user-isolated reflection interaction entry
  */
 export async function deleteInteraction(userId: string, entryId: string): Promise<void> {
+  if (!userId || !entryId) return;
+
   const docPath = `users/${userId}/interactions/${entryId}`;
   try {
     const docRef = doc(db, 'users', userId, 'interactions', entryId);
@@ -140,7 +194,11 @@ export function subscribeToUserInteractions(
   userId: string,
   onData: (entries: InteractionEntry[]) => void,
   onError: (error: FirestoreErrorInfo) => void
-) {
+): () => void {
+  if (!userId || !userId.trim()) {
+    return () => {};
+  }
+
   const collectionPath = `users/${userId}/interactions`;
   const collRef = collection(db, 'users', userId, 'interactions');
   const q = query(collRef, orderBy('updatedAt', 'desc'));
@@ -150,8 +208,20 @@ export function subscribeToUserInteractions(
     (snapshot) => {
       const items: InteractionEntry[] = [];
       snapshot.forEach((docSnap) => {
-        items.push(docSnap.data() as InteractionEntry);
+        const data = docSnap.data() as InteractionEntry;
+        items.push({
+          ...data,
+          id: data.id || docSnap.id,
+        });
       });
+
+      // Defensive in-memory sort ensures perfect ordering even if legacy items lack timestamps
+      items.sort((a, b) => {
+        const timeA = new Date(a.updatedAt || a.createdAt || 0).getTime();
+        const timeB = new Date(b.updatedAt || b.createdAt || 0).getTime();
+        return timeB - timeA;
+      });
+
       onData(items);
     },
     (error) => {

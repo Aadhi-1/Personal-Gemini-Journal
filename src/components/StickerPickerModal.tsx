@@ -44,12 +44,12 @@ export const StickerPickerModal: React.FC<StickerPickerModalProps> = ({
   return (
     <div
       id="sticker-picker-modal-overlay"
-      className="fixed inset-0 bg-stone-900/50 backdrop-blur-xs flex items-center justify-center z-50 p-4 animate-fade-in"
+      className="fixed inset-0 bg-stone-900/50 backdrop-blur-xs flex items-center justify-center z-50 p-2 sm:p-4 animate-fade-in"
       onClick={onClose}
     >
       <div
         id="sticker-picker-modal-content"
-        className="bg-white rounded-3xl max-w-lg w-full border border-stone-200 shadow-2xl p-5 sm:p-6 relative max-h-[85vh] flex flex-col"
+        className="bg-white rounded-2xl sm:rounded-3xl max-w-lg w-full border border-stone-200 shadow-2xl p-4 sm:p-6 relative max-h-[92vh] sm:max-h-[85vh] flex flex-col"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}

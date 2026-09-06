@@ -249,26 +249,26 @@ export const LocationPickerModal: React.FC<LocationPickerModalProps> = ({
   return (
     <div
       id="location-picker-modal-backdrop"
-      className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/60 backdrop-blur-xs"
+      className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-slate-900/60 backdrop-blur-xs"
     >
       <motion.div
         id="location-picker-modal-card"
         initial={{ opacity: 0, scale: 0.95, y: 15 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.95, y: 15 }}
-        className="w-full max-w-2xl bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden flex flex-col max-h-[90vh]"
+        className="w-full max-w-2xl bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden flex flex-col max-h-[92vh] sm:max-h-[90vh]"
       >
         {/* Modal Header */}
         <div
           id="location-modal-header"
-          className="px-5 py-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between bg-slate-50/50 dark:bg-slate-900/50"
+          className="px-4 sm:px-5 py-3 sm:py-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between bg-slate-50/50 dark:bg-slate-900/50"
         >
           <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
+            <div className="w-8 h-8 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
               <MapPin className="w-4 h-4" />
             </div>
             <div>
-              <h2 className="text-base font-semibold text-slate-900 dark:text-white">
+              <h2 className="text-sm sm:text-base font-semibold text-slate-900 dark:text-white">
                 Pin Location to Reflection
               </h2>
               <p className="text-xs text-slate-500 dark:text-slate-400">
@@ -287,7 +287,7 @@ export const LocationPickerModal: React.FC<LocationPickerModalProps> = ({
         </div>
 
         {/* Modal Body */}
-        <div className="p-5 overflow-y-auto space-y-4 flex-1">
+        <div className="p-3.5 sm:p-5 overflow-y-auto space-y-3.5 sm:space-y-4 flex-1">
           {/* Search bar & Current Location */}
           <div className="flex flex-col sm:flex-row gap-2">
             <form onSubmit={handleSearch} className="relative flex-1">
@@ -340,7 +340,7 @@ export const LocationPickerModal: React.FC<LocationPickerModalProps> = ({
           {/* Interactive Google Map View */}
           <div
             id="google-maps-container"
-            className="w-full h-64 rounded-xl overflow-hidden border border-slate-200 dark:border-slate-700 relative bg-slate-100 dark:bg-slate-800"
+            className="w-full h-48 sm:h-64 rounded-xl overflow-hidden border border-slate-200 dark:border-slate-700 relative bg-slate-100 dark:bg-slate-800"
           >
             {apiKey ? (
               <APIProvider apiKey={apiKey}>
@@ -453,17 +453,17 @@ export const LocationPickerModal: React.FC<LocationPickerModalProps> = ({
         {/* Modal Footer */}
         <div
           id="location-modal-footer"
-          className="px-5 py-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between bg-slate-50/50 dark:bg-slate-900/50"
+          className="px-4 sm:px-5 py-2.5 sm:py-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between gap-2 bg-slate-50/50 dark:bg-slate-900/50"
         >
-          <div className="text-2xs text-slate-500 dark:text-slate-400">
+          <div className="hidden sm:block text-2xs text-slate-500 dark:text-slate-400">
             Powered by Google Maps Platform
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center justify-end gap-2 w-full sm:w-auto">
             <button
               id="cancel-location-pin-button"
               type="button"
               onClick={onClose}
-              className="px-3 py-1.5 text-xs font-medium text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-colors"
+              className="px-3 py-1.5 text-xs font-medium text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-colors cursor-pointer"
             >
               Cancel
             </button>
@@ -471,10 +471,10 @@ export const LocationPickerModal: React.FC<LocationPickerModalProps> = ({
               id="confirm-location-pin-button"
               type="button"
               onClick={handleConfirm}
-              className="inline-flex items-center gap-1.5 px-4 py-1.5 text-xs font-medium bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl shadow-xs transition-colors"
+              className="inline-flex items-center gap-1.5 px-3 sm:px-4 py-1.5 text-xs font-medium bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl shadow-xs transition-colors cursor-pointer"
             >
               <Check className="w-3.5 h-3.5" />
-              <span>Confirm Location Pin</span>
+              <span>Confirm<span className="hidden sm:inline"> Location Pin</span></span>
             </button>
           </div>
         </div>

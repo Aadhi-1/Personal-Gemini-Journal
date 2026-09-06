@@ -38,6 +38,7 @@ import {
   Image as ImageIcon,
   Film,
   Globe,
+  LogOut,
 } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import { APIProvider, Map, AdvancedMarker, Pin } from '@vis.gl/react-google-maps';
@@ -59,6 +60,8 @@ import { ReflectionTimer } from './ReflectionTimer';
 import { MediaPickerModal } from './MediaPickerModal';
 import { MediaLightboxModal } from './MediaLightboxModal';
 import { GeminiToolsModal } from './GeminiToolsModal';
+import { FunnyVideoPlayer } from './FunnyVideoPlayer';
+import { FunnyVideoModal } from './FunnyVideoModal';
 import { analyzeDistressOnDevice, sanitizeTextForAudioDLP } from '../crypto/guardrails';
 import { enclave } from '../crypto/workerClient';
 import {
@@ -80,6 +83,7 @@ interface WorkspaceProps {
   onOpenMoodInsights?: () => void;
   onOpenVoiceGuide?: () => void;
   onOpenSecurityModal?: () => void;
+  onSignOut?: () => void;
 }
 
 const MODES: { id: JournalMode; label: string; description: string }[] = [
@@ -116,6 +120,7 @@ export const Workspace: React.FC<WorkspaceProps> = ({
   onOpenMoodInsights,
   onOpenVoiceGuide,
   onOpenSecurityModal,
+  onSignOut,
 }) => {
   const {
     currentTheme,
@@ -155,6 +160,7 @@ export const Workspace: React.FC<WorkspaceProps> = ({
   const [lightboxMedia, setLightboxMedia] = useState<MediaAttachment | null>(null);
   const [isGeminiToolsModalOpen, setIsGeminiToolsModalOpen] = useState(false);
   const [enableSearchGrounding, setEnableSearchGrounding] = useState(false);
+  const [isFunnyVideoModalOpen, setIsFunnyVideoModalOpen] = useState(false);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -561,6 +567,7 @@ export const Workspace: React.FC<WorkspaceProps> = ({
         content: modelReply,
         timestamp: new Date().toISOString(),
         groundingSources: data.groundingSources && data.groundingSources.length > 0 ? data.groundingSources : undefined,
+        upliftingVideo: data.upliftingVideo || undefined,
       };
 
       const finalMessages = [...updatedMessages, modelMessage];
@@ -710,19 +717,19 @@ export const Workspace: React.FC<WorkspaceProps> = ({
     >
       {/* Top Session Bar */}
       <div
-        className="border-b px-4 sm:px-6 py-3 flex flex-col gap-3 shrink-0 transition-colors"
+        className="border-b px-3 sm:px-6 py-2 sm:py-3 flex flex-col gap-2 sm:gap-3 shrink-0 transition-colors"
         style={{
           backgroundColor: currentTheme.bgSurface,
           borderColor: currentTheme.borderColor,
         }}
       >
-        <div className="flex items-center justify-between gap-2.5">
+        <div className="flex items-center justify-between gap-1.5 sm:gap-2.5">
           {/* Mobile sidebar toggle */}
           <button
             id="mobile-sidebar-toggle"
             type="button"
             onClick={onToggleMobileSidebar}
-            className="lg:hidden p-2 rounded-xl text-stone-600 hover:bg-stone-200/70 transition-colors shrink-0"
+            className="lg:hidden p-1.5 sm:p-2 rounded-xl text-stone-600 hover:bg-stone-200/70 transition-colors shrink-0"
             title="Toggle past reflections"
           >
             <Menu className="w-5 h-5" />
@@ -765,7 +772,7 @@ export const Workspace: React.FC<WorkspaceProps> = ({
             {entry.mood && (
               <span
                 id="entry-title-mood-emoji"
-                className="text-base sm:text-lg mr-1.5 shrink-0 select-none"
+                className="text-sm sm:text-base md:text-lg mr-1 sm:mr-1.5 shrink-0 select-none"
                 title={`Mood: ${entry.mood}`}
               >
                 {entry.mood.split(' ')[0]}
@@ -778,17 +785,17 @@ export const Workspace: React.FC<WorkspaceProps> = ({
               key={entry.id + entry.title}
               onBlur={handleTitleBlur}
               placeholder="Name your reflection..."
-              className="flex-1 text-sm sm:text-base font-semibold bg-transparent px-2 py-1 -ml-1 rounded-md border border-transparent focus:border-stone-300 focus:outline-none transition-colors truncate"
+              className="flex-1 text-sm sm:text-base font-semibold bg-transparent px-1.5 sm:px-2 py-1 -ml-1 rounded-md border border-transparent focus:border-stone-300 focus:outline-none transition-colors truncate min-w-0"
               style={{ color: currentTheme.textMain }}
             />
           </div>
 
           {/* Action buttons & 3-dots kebab menu */}
-          <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+          <div className="flex items-center gap-1 sm:gap-2 shrink-0">
             {/* Real-time Autosave Feedback Badge */}
             <div
               id="workspace-autosave-indicator"
-              className="flex items-center gap-1 px-2 py-1 rounded-lg text-[11px] border transition-all duration-200 select-none shrink-0"
+              className="flex items-center gap-1 px-1.5 sm:px-2 py-1 rounded-lg text-[11px] border transition-all duration-200 select-none shrink-0"
               style={{
                 borderColor: currentTheme.borderColor,
                 backgroundColor: `${currentTheme.bgMain}70`,
@@ -820,7 +827,7 @@ export const Workspace: React.FC<WorkspaceProps> = ({
               type="button"
               onClick={handleGenerateSummary}
               disabled={isSummarizing || entry.messages.length === 0}
-              className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-xl text-xs font-semibold bg-amber-500/15 hover:bg-amber-500/25 border border-amber-400/40 text-amber-900 dark:text-amber-200 disabled:opacity-40 disabled:cursor-not-allowed transition-all shadow-2xs shrink-0"
+              className="flex items-center gap-1 sm:gap-1.5 px-2 sm:px-3 py-1.5 rounded-xl text-xs font-semibold bg-amber-500/15 hover:bg-amber-500/25 border border-amber-400/40 text-amber-900 dark:text-amber-200 disabled:opacity-40 disabled:cursor-not-allowed transition-all shadow-2xs shrink-0"
               title="Generate summary and extract key takeaways with Gemini"
             >
               <Sparkles className={`w-3.5 h-3.5 text-amber-600 dark:text-amber-400 ${isSummarizing ? 'animate-spin' : ''}`} />
@@ -935,6 +942,18 @@ export const Workspace: React.FC<WorkspaceProps> = ({
                   <span>Jarvis</span>
                 </button>
               )}
+
+              {/* Instant Mood Uplifter & Funny Videos Button */}
+              <button
+                id="workspace-funny-video-btn"
+                type="button"
+                onClick={() => setIsFunnyVideoModalOpen(true)}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold text-amber-950 bg-amber-100 hover:bg-amber-200 border border-amber-300/80 transition-all shadow-2xs active:scale-95 cursor-pointer"
+                title="Watch funny laughing videos to soothe and cheer up your mood"
+              >
+                <span className="text-sm leading-none">😂</span>
+                <span className="hidden sm:inline">Cheer Up</span>
+              </button>
             </div>
 
             {/* 3-DOTS KEBAB MENU BUTTON: For Laptop Full Screen Dashboard & Clean Phone/Tablet Mode */}
@@ -1073,6 +1092,23 @@ export const Workspace: React.FC<WorkspaceProps> = ({
                         <span>Voice Commands Guide</span>
                       </button>
                     )}
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsActionsMenuOpen(false);
+                        setIsFunnyVideoModalOpen(true);
+                      }}
+                      className="w-full px-3 py-2 rounded-xl flex items-center justify-between text-xs hover:bg-amber-50/70 dark:hover:bg-amber-950/30 transition-colors text-left font-medium"
+                    >
+                      <span className="flex items-center gap-2.5">
+                        <span className="text-base leading-none">😂</span>
+                        <span>Cheer Up & Funny Videos</span>
+                      </span>
+                      <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-100 dark:bg-amber-900 text-amber-900 dark:text-amber-200 font-bold">
+                        Laughs
+                      </span>
+                    </button>
                   </div>
 
                   {/* Section 3: Analytics & Export Vault */}
@@ -1149,26 +1185,49 @@ export const Workspace: React.FC<WorkspaceProps> = ({
                       <span>Add Reflection Stickers</span>
                     </button>
                   </div>
+
+                  {/* Section 5: Account & Session */}
+                  {onSignOut && (
+                    <div className="py-1 px-1 border-t border-stone-200/60 dark:border-stone-800">
+                      <button
+                        id="workspace-actions-sign-out-btn"
+                        type="button"
+                        onClick={() => {
+                          setIsActionsMenuOpen(false);
+                          onSignOut();
+                        }}
+                        className="w-full px-3 py-2 rounded-xl flex items-center justify-between text-xs text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors text-left font-semibold cursor-pointer"
+                      >
+                        <span className="flex items-center gap-2.5">
+                          <LogOut className="w-4 h-4" />
+                          <span>Lock Session & Sign Out</span>
+                        </span>
+                        <span className="text-[10px] px-1.5 py-0.5 rounded bg-rose-100 dark:bg-rose-900/60 text-rose-700 dark:text-rose-200 font-mono font-bold">
+                          Exit
+                        </span>
+                      </button>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
           </div>
         </div>
 
-        {/* Configuration Row: Mode Selector, Category, Mood, Location, and Stickers */}
-        <div className="flex flex-wrap items-center justify-between gap-3 text-xs">
+        {/* Configuration Row: Mode Selector, Category, Mood, Location, Stickers & Media in a single sleek scrollable toolbar */}
+        <div className="flex items-center gap-2 overflow-x-auto no-scrollbar py-0.5 text-xs max-w-full">
           {/* Mode Pill Toggle */}
-          <div className="flex items-center gap-1 bg-stone-200/70 p-0.5 rounded-lg overflow-x-auto max-w-full">
+          <div className="inline-flex items-center gap-0.5 bg-stone-200/70 dark:bg-stone-800 p-0.5 rounded-lg shrink-0">
             {MODES.map((m) => (
               <button
                 key={m.id}
                 type="button"
                 onClick={() => handleModeChange(m.id)}
                 title={m.description}
-                className={`px-2.5 py-1 rounded-md font-medium whitespace-nowrap transition-colors ${
+                className={`px-2.5 py-1 rounded-md font-medium whitespace-nowrap transition-colors shrink-0 text-xs ${
                   entry.mode === m.id
-                    ? 'bg-white text-stone-900 shadow-2xs font-semibold'
-                    : 'text-stone-600 hover:text-stone-900'
+                    ? 'bg-white dark:bg-stone-900 text-stone-900 dark:text-stone-100 shadow-2xs font-semibold'
+                    : 'text-stone-600 dark:text-stone-400 hover:text-stone-900 dark:hover:text-stone-100'
                 }`}
               >
                 {m.label}
@@ -1176,191 +1235,196 @@ export const Workspace: React.FC<WorkspaceProps> = ({
             ))}
           </div>
 
-          {/* Category Dropdown, Location Pinning & Stickers */}
-          <div className="flex flex-wrap items-center gap-2.5">
-            <div className="flex items-center gap-1.5">
-              <span className="text-stone-500 font-medium">Category:</span>
+          <div className="h-4 w-px bg-stone-200 dark:bg-stone-700 shrink-0" />
+
+          {/* Category Dropdown */}
+          <div className="inline-flex items-center gap-1 shrink-0">
+            <span className="text-stone-400 dark:text-stone-500 font-medium text-2xs uppercase tracking-wider">Tag:</span>
+            <select
+              id="entry-category-select"
+              value={entry.category}
+              onChange={handleCategoryChange}
+              className="px-2 py-1 rounded-lg text-xs font-medium bg-white dark:bg-stone-800 border border-stone-200 dark:border-stone-700 text-stone-800 dark:text-stone-200 focus:outline-none focus:ring-1 focus:ring-stone-400 shrink-0 cursor-pointer shadow-2xs"
+            >
+              {CATEGORIES.map((cat) => (
+                <option key={cat} value={cat}>
+                  {cat}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Mood Selector Dropdown */}
+          <div className="inline-flex items-center gap-1 shrink-0">
+            <span className="text-stone-400 dark:text-stone-500 font-medium text-2xs uppercase tracking-wider">Mood:</span>
+            <div className="relative inline-flex items-center">
               <select
-                id="entry-category-select"
-                value={entry.category}
-                onChange={handleCategoryChange}
-                className="px-2.5 py-1 rounded-lg text-xs font-medium bg-white border border-stone-300 text-stone-800 focus:outline-none focus:ring-1 focus:ring-stone-400"
+                id="entry-mood-select"
+                value={entry.mood || ''}
+                onChange={(e) => handleMoodChange(e.target.value || null)}
+                className={`px-2 py-1 rounded-lg text-xs font-medium border transition-all focus:outline-none focus:ring-1 shrink-0 cursor-pointer ${
+                  entry.mood
+                    ? 'bg-amber-50 border-amber-300 text-amber-900 dark:bg-amber-950/40 dark:border-amber-700 dark:text-amber-300 shadow-2xs font-semibold'
+                    : 'bg-white dark:bg-stone-800 border-stone-200 dark:border-stone-700 text-stone-700 dark:text-stone-300 hover:border-stone-400'
+                }`}
+                title="Tag your entry with a mood emoji"
               >
-                {CATEGORIES.map((cat) => (
-                  <option key={cat} value={cat}>
-                    {cat}
+                <option value="">Tag Mood...</option>
+                {MOOD_OPTIONS.map((m) => (
+                  <option key={m.label} value={`${m.emoji} ${m.label}`}>
+                    {m.emoji} {m.label}
                   </option>
                 ))}
               </select>
             </div>
 
-            {/* Mood Emoji Selector */}
-            <div className="flex items-center gap-1.5">
-              <span className="text-stone-500 font-medium">Mood:</span>
-              <div className="relative inline-flex items-center">
-                <select
-                  id="entry-mood-select"
-                  value={entry.mood || ''}
-                  onChange={(e) => handleMoodChange(e.target.value || null)}
-                  className={`px-2.5 py-1 rounded-lg text-xs font-medium border transition-all focus:outline-none focus:ring-1 ${
-                    entry.mood
-                      ? 'bg-amber-50 border-amber-300 text-amber-900 shadow-2xs font-semibold'
-                      : 'bg-white border-stone-300 text-stone-700 hover:border-stone-400 focus:ring-stone-400'
-                  }`}
-                  title="Tag your entry with a mood emoji"
-                >
-                  <option value="">Tag Mood...</option>
-                  {MOOD_OPTIONS.map((m) => (
-                    <option key={m.label} value={`${m.emoji} ${m.label}`}>
-                      {m.emoji} {m.label}
-                    </option>
-                  ))}
-                </select>
-              </div>
+            {entry.mood && (
+              <button
+                id="clear-entry-mood-button"
+                type="button"
+                onClick={() => handleMoodChange(null)}
+                className="text-stone-400 hover:text-stone-700 dark:hover:text-stone-200 p-0.5 rounded transition-colors shrink-0"
+                title="Clear mood tag"
+              >
+                <X className="w-3 h-3" />
+              </button>
+            )}
+          </div>
 
-              {entry.mood && (
+          {/* Location Pin Badge / Button */}
+          <div className="inline-flex items-center shrink-0">
+            {entry.location ? (
+              <div
+                id="entry-location-pill"
+                className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 text-emerald-900 dark:text-emerald-300 text-xs shadow-2xs shrink-0"
+              >
+                <MapPin className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
                 <button
-                  id="clear-entry-mood-button"
+                  id="edit-pinned-location-button"
                   type="button"
-                  onClick={() => handleMoodChange(null)}
-                  className="text-stone-400 hover:text-stone-700 p-0.5 rounded transition-colors"
-                  title="Clear mood tag"
+                  onClick={() => setIsLocationModalOpen(true)}
+                  className="font-medium hover:underline max-w-[140px] truncate text-left cursor-pointer"
+                  title={`${entry.location.name} - Click to change location`}
+                >
+                  {entry.location.name}
+                </button>
+                <button
+                  id="remove-pinned-location-button"
+                  type="button"
+                  onClick={handleRemoveLocation}
+                  className="text-emerald-700/60 hover:text-emerald-900 dark:text-emerald-400 dark:hover:text-emerald-200 p-0.5 rounded transition-colors shrink-0 cursor-pointer"
+                  title="Remove pinned location"
                 >
                   <X className="w-3 h-3" />
                 </button>
-              )}
-            </div>
-
-            {/* Location Pin Badge / Button */}
-            <div className="flex items-center gap-1.5">
-              {entry.location ? (
-                <div
-                  id="entry-location-pill"
-                  className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-900 text-xs shadow-2xs"
-                >
-                  <MapPin className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-                  <button
-                    id="edit-pinned-location-button"
-                    type="button"
-                    onClick={() => setIsLocationModalOpen(true)}
-                    className="font-medium hover:underline max-w-[140px] sm:max-w-[200px] truncate text-left"
-                    title={`${entry.location.name} - Click to change location`}
-                  >
-                    {entry.location.name}
-                  </button>
-                  <button
-                    id="remove-pinned-location-button"
-                    type="button"
-                    onClick={handleRemoveLocation}
-                    className="text-emerald-700/60 hover:text-emerald-900 p-0.5 rounded transition-colors"
-                    title="Remove pinned location"
-                  >
-                    <X className="w-3 h-3" />
-                  </button>
-                </div>
-              ) : (
-                <button
-                  id="pin-location-button"
-                  type="button"
-                  onClick={() => setIsLocationModalOpen(true)}
-                  className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium text-stone-700 hover:text-emerald-700 bg-white hover:bg-emerald-50/50 border border-stone-300 hover:border-emerald-300 transition-colors shadow-2xs"
-                  title="Pin geographical location with Google Maps"
-                >
-                  <MapPin className="w-3.5 h-3.5 text-stone-500" />
-                  <span>Pin Location</span>
-                </button>
-              )}
-            </div>
-
-            {/* Journal Stickers Chip Row & Add Button */}
-            <div className="flex items-center gap-1.5 flex-wrap">
-              {entry.stickers && entry.stickers.length > 0 && (
-                <div className="flex items-center gap-1 flex-wrap">
-                  {entry.stickers.map((sId) => {
-                    const sticker = JOURNAL_STICKERS.find((x) => x.id === sId);
-                    if (!sticker) return null;
-                    return (
-                      <span
-                        key={sId}
-                        className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold border shadow-2xs ${sticker.colorClass}`}
-                        title={sticker.description}
-                      >
-                        <span>{sticker.emoji}</span>
-                        <span>{sticker.label}</span>
-                        <button
-                          type="button"
-                          onClick={() => handleRemoveSticker(sId)}
-                          className="p-0.5 opacity-60 hover:opacity-100 transition-opacity"
-                          title="Remove sticker"
-                        >
-                          <X className="w-2.5 h-2.5" />
-                        </button>
-                      </span>
-                    );
-                  })}
-                </div>
-              )}
-
+              </div>
+            ) : (
               <button
-                id="workspace-add-sticker-btn"
+                id="pin-location-button"
                 type="button"
-                onClick={() => setIsStickerModalOpen(true)}
-                className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium text-stone-700 hover:text-amber-700 bg-white hover:bg-amber-50/50 border border-stone-300 hover:border-amber-300 transition-colors shadow-2xs"
-                title="Attach reflection stickers and milestone badges"
+                onClick={() => setIsLocationModalOpen(true)}
+                className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium text-stone-700 dark:text-stone-300 hover:text-emerald-700 dark:hover:text-emerald-400 bg-white dark:bg-stone-800 hover:bg-emerald-50/50 dark:hover:bg-emerald-950/30 border border-stone-200 dark:border-stone-700 hover:border-emerald-300 transition-colors shadow-2xs shrink-0 whitespace-nowrap cursor-pointer"
+                title="Pin geographical location with Google Maps"
               >
-                <SmilePlus className="w-3.5 h-3.5 text-amber-600" />
-                <span>+ Sticker</span>
+                <MapPin className="w-3.5 h-3.5 text-stone-500 dark:text-stone-400" />
+                <span>Pin Location</span>
               </button>
-            </div>
+            )}
+          </div>
 
-            {/* Photos & GIFs Entry Gallery Chips & Add Button */}
-            <div className="flex items-center gap-1.5 flex-wrap">
-              {entry.attachments && entry.attachments.length > 0 && (
-                <div className="flex items-center gap-1 flex-wrap">
-                  {entry.attachments.map((att) => (
-                    <div
-                      key={att.id}
-                      className="group relative inline-flex items-center gap-1.5 px-2 py-0.5 rounded-lg text-[11px] font-medium bg-stone-100 border border-stone-300 shadow-2xs hover:bg-stone-200 transition-all cursor-pointer"
-                      onClick={() => setLightboxMedia(att)}
-                      title={`${att.title || 'Attachment'} - Click to view in full resolution`}
+          {/* Stickers */}
+          <div className="inline-flex items-center gap-1 shrink-0">
+            {entry.stickers && entry.stickers.length > 0 && (
+              <div className="inline-flex items-center gap-1 shrink-0">
+                {entry.stickers.map((sId) => {
+                  const sticker = JOURNAL_STICKERS.find((x) => x.id === sId);
+                  if (!sticker) return null;
+                  return (
+                    <span
+                      key={sId}
+                      className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold border shadow-2xs shrink-0 whitespace-nowrap ${sticker.colorClass}`}
+                      title={sticker.description}
                     >
-                      <img
-                        src={att.url}
-                        alt={att.title || 'Attachment'}
-                        referrerPolicy="no-referrer"
-                        className="w-4 h-4 rounded object-cover"
-                      />
-                      <span className="max-w-[80px] truncate">{att.title || (att.type === 'gif' ? 'GIF' : 'Photo')}</span>
+                      <span>{sticker.emoji}</span>
+                      <span>{sticker.label}</span>
                       <button
                         type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleRemoveEntryAttachment(att.id);
-                        }}
-                        className="p-0.5 opacity-60 hover:opacity-100 hover:text-red-600 transition-colors"
-                        title="Remove attachment from entry"
+                        onClick={() => handleRemoveSticker(sId)}
+                        className="p-0.5 opacity-60 hover:opacity-100 transition-opacity cursor-pointer"
+                        title="Remove sticker"
                       >
                         <X className="w-2.5 h-2.5" />
                       </button>
-                    </div>
-                  ))}
-                </div>
-              )}
+                    </span>
+                  );
+                })}
+              </div>
+            )}
 
-              <button
-                id="workspace-add-media-btn"
-                type="button"
-                onClick={() => {
-                  setMediaPickerMode('entry');
-                  setIsMediaModalOpen(true);
-                }}
-                className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium text-stone-700 hover:text-indigo-700 bg-white hover:bg-indigo-50/50 border border-stone-300 hover:border-indigo-300 transition-colors shadow-2xs cursor-pointer"
-                title="Attach photos and trending GIFs to this reflection"
-              >
-                <ImageIcon className="w-3.5 h-3.5 text-indigo-600" />
-                <span>+ Photo/GIF</span>
-              </button>
-            </div>
+            <button
+              id="workspace-add-sticker-btn"
+              type="button"
+              onClick={() => setIsStickerModalOpen(true)}
+              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium text-stone-700 dark:text-stone-300 hover:text-amber-700 dark:hover:text-amber-400 bg-white dark:bg-stone-800 hover:bg-amber-50/50 dark:hover:bg-amber-950/30 border border-stone-200 dark:border-stone-700 hover:border-amber-300 transition-colors shadow-2xs shrink-0 whitespace-nowrap cursor-pointer"
+              title="Attach reflection stickers and milestone badges"
+            >
+              <SmilePlus className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
+              <span>+ Sticker</span>
+            </button>
+          </div>
+
+          {/* Media Attachments Gallery Chips & Add Button */}
+          <div className="inline-flex items-center gap-1 shrink-0">
+            {entry.attachments && entry.attachments.length > 0 && (
+              <div className="inline-flex items-center gap-1 shrink-0">
+                {entry.attachments.map((att) => (
+                  <div
+                    key={att.id}
+                    className="inline-flex items-center gap-1.5 p-0.5 pr-2 rounded-lg bg-white dark:bg-stone-800 border border-stone-200 dark:border-stone-700 text-stone-800 dark:text-stone-200 text-xs shadow-2xs shrink-0"
+                  >
+                    <img
+                      src={att.url}
+                      alt={att.title || 'Attachment'}
+                      referrerPolicy="no-referrer"
+                      className="w-4 h-4 rounded object-cover cursor-pointer hover:opacity-80"
+                      onClick={() => setLightboxMedia(att)}
+                    />
+                    <span
+                      className="truncate max-w-[80px] font-medium cursor-pointer hover:underline text-[11px]"
+                      onClick={() => setLightboxMedia(att)}
+                      title={att.title || 'Attachment'}
+                    >
+                      {att.title || (att.type === 'gif' ? 'GIF' : 'Photo')}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleRemoveEntryAttachment(att.id);
+                      }}
+                      className="text-stone-400 hover:text-red-600 p-0.5 rounded transition-colors cursor-pointer"
+                      title="Remove attachment"
+                    >
+                      <X className="w-2.5 h-2.5" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <button
+              id="workspace-add-media-btn"
+              type="button"
+              onClick={() => {
+                setMediaPickerMode('entry');
+                setIsMediaModalOpen(true);
+              }}
+              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium text-stone-700 dark:text-stone-300 hover:text-indigo-700 dark:hover:text-indigo-400 bg-white dark:bg-stone-800 hover:bg-indigo-50/50 dark:hover:bg-indigo-950/30 border border-stone-200 dark:border-stone-700 hover:border-indigo-300 transition-colors shadow-2xs shrink-0 whitespace-nowrap cursor-pointer"
+              title="Attach photos and animated GIFs to this reflection journal"
+            >
+              <ImageIcon className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
+              <span>+ Photo/GIF</span>
+            </button>
           </div>
         </div>
       </div>
@@ -1395,21 +1459,21 @@ export const Workspace: React.FC<WorkspaceProps> = ({
 
       {/* AI Summary Banner (if available) */}
       {(entry.summary || (entry.keyInsights && entry.keyInsights.length > 0)) && (
-        <div className="border-b border-amber-200/80 bg-amber-50/60 px-4 sm:px-6 py-3 transition-all shrink-0">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2 cursor-pointer" onClick={() => setIsSummaryExpanded(!isSummaryExpanded)}>
-              <Sparkles className="w-4 h-4 text-amber-600" />
-              <span className="text-xs font-semibold text-amber-950 uppercase tracking-wider">
+        <div className="border-b border-amber-200/80 bg-amber-50/60 px-3 sm:px-6 py-2.5 sm:py-3 transition-all shrink-0">
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2 cursor-pointer min-w-0" onClick={() => setIsSummaryExpanded(!isSummaryExpanded)}>
+              <Sparkles className="w-4 h-4 text-amber-600 shrink-0" />
+              <span className="text-xs font-semibold text-amber-950 uppercase tracking-wider truncate">
                 AI Distilled Insights & Summary
               </span>
               {externalAlertStatus && (
-                <span className="hidden sm:inline-flex items-center gap-1 text-[11px] font-medium text-emerald-800 bg-emerald-100/90 border border-emerald-300 px-2 py-0.5 rounded-md animate-in fade-in">
+                <span className="hidden md:inline-flex items-center gap-1 text-[11px] font-medium text-emerald-800 bg-emerald-100/90 border border-emerald-300 px-2 py-0.5 rounded-md animate-in fade-in shrink-0">
                   <CheckCircle2 className="w-3 h-3 text-emerald-600" />
                   {externalAlertStatus}
                 </span>
               )}
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
               <button
                 id="manual-dispatch-alert-btn"
                 type="button"
@@ -1418,16 +1482,16 @@ export const Workspace: React.FC<WorkspaceProps> = ({
                   dispatchNotificationForEntry(entry);
                 }}
                 disabled={isSendingAlert}
-                className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium text-indigo-900 bg-indigo-50 border border-indigo-200 hover:bg-indigo-100 hover:border-indigo-300 transition-colors shadow-2xs"
+                className="flex items-center gap-1 px-2 sm:px-2.5 py-1 rounded-lg text-xs font-medium text-indigo-900 bg-indigo-50 border border-indigo-200 hover:bg-indigo-100 hover:border-indigo-300 transition-colors shadow-2xs cursor-pointer shrink-0"
                 title="Send notification to configured external webhooks (Slack/Discord/Email)"
               >
                 <Bell className={`w-3.5 h-3.5 text-indigo-600 ${isSendingAlert ? 'animate-bounce' : ''}`} />
-                <span className="hidden md:inline">{isSendingAlert ? 'Notifying...' : 'Notify Webhooks'}</span>
+                <span className="hidden sm:inline">{isSendingAlert ? 'Notifying...' : 'Notify Webhooks'}</span>
               </button>
               <button
                 type="button"
                 onClick={() => setIsSummaryExpanded(!isSummaryExpanded)}
-                className="text-stone-500 hover:text-stone-700 p-1 rounded"
+                className="text-stone-500 hover:text-stone-700 p-1 rounded cursor-pointer shrink-0"
               >
                 {isSummaryExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
               </button>
@@ -1458,19 +1522,19 @@ export const Workspace: React.FC<WorkspaceProps> = ({
       {entry.location && (
         <div
           id="pinned-location-banner"
-          className="border-b border-emerald-100 bg-emerald-50/40 px-4 sm:px-6 py-2.5 flex flex-col gap-2 shrink-0 transition-all"
+          className="border-b border-emerald-100 bg-emerald-50/40 px-3 sm:px-6 py-2 sm:py-2.5 flex flex-col gap-2 shrink-0 transition-all"
         >
-          <div className="flex items-center justify-between gap-3 text-xs">
-            <div className="flex items-center gap-2.5 min-w-0">
+          <div className="flex items-center justify-between gap-2.5 text-xs">
+            <div className="flex items-center gap-2 min-w-0">
               <div className="w-6 h-6 rounded-md bg-emerald-500/10 text-emerald-600 flex items-center justify-center shrink-0">
                 <MapPin className="w-3.5 h-3.5" />
               </div>
               <div className="min-w-0">
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-1.5 sm:gap-2">
                   <span className="font-semibold text-emerald-950 truncate">
                     {entry.location.name}
                   </span>
-                  <span className="text-2xs font-mono text-emerald-700/75 bg-emerald-100/60 px-1.5 py-0.2 rounded shrink-0">
+                  <span className="hidden sm:inline-block text-2xs font-mono text-emerald-700/75 bg-emerald-100/60 px-1.5 py-0.2 rounded shrink-0">
                     {entry.location.lat.toFixed(4)}, {entry.location.lng.toFixed(4)}
                   </span>
                 </div>
@@ -1644,9 +1708,18 @@ export const Workspace: React.FC<WorkspaceProps> = ({
                   {isUser ? (
                     <p className="whitespace-pre-wrap">{message.content}</p>
                   ) : (
-                    <div className="markdown-body">
-                      <ReactMarkdown>{message.content}</ReactMarkdown>
-                    </div>
+                    <>
+                      <div className="markdown-body">
+                        <ReactMarkdown>{message.content}</ReactMarkdown>
+                      </div>
+
+                      {/* Mood Easing: Funny / Laughing Video */}
+                      {message.upliftingVideo && (
+                        <div className="mt-3">
+                          <FunnyVideoPlayer initialVideo={message.upliftingVideo} inline={true} />
+                        </div>
+                      )}
+                    </>
                   )}
 
                   {/* Google Search Grounding Citations */}
@@ -1745,7 +1818,7 @@ export const Workspace: React.FC<WorkspaceProps> = ({
 
       {/* Input Area */}
       <div
-        className="border-t p-4 shrink-0 transition-colors"
+        className="border-t p-2.5 sm:p-4 shrink-0 transition-colors"
         style={{
           backgroundColor: currentTheme.bgSurface,
           borderColor: currentTheme.borderColor,
@@ -1960,6 +2033,12 @@ export const Workspace: React.FC<WorkspaceProps> = ({
         onApplyInsightToChat={(insightText) => handleApplyQuickInsight(insightText, 'Gemini Mindful Synthesis')}
         enableSearchGrounding={enableSearchGrounding}
         onToggleSearchGrounding={setEnableSearchGrounding}
+      />
+
+      {/* Mood Easing: Funny & Laughing Videos Modal */}
+      <FunnyVideoModal
+        isOpen={isFunnyVideoModalOpen}
+        onClose={() => setIsFunnyVideoModalOpen(false)}
       />
     </div>
   );

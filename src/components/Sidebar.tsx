@@ -16,7 +16,9 @@ import {
   Palette,
   X,
   RotateCcw,
+  LogOut,
 } from 'lucide-react';
+import { User } from 'firebase/auth';
 import { InteractionEntry, JournalCategory, JOURNAL_STICKERS } from '../types';
 import { useTheme, ACCENT_COLORS } from '../theme/ThemeContext';
 
@@ -32,6 +34,10 @@ interface SidebarProps {
   onOpenThemeCustomizer?: () => void;
   isDesktopCollapsed?: boolean;
   onToggleDesktopCollapse?: () => void;
+  user?: User | null;
+  isGuest?: boolean;
+  onSignOut?: () => void;
+  onSignIn?: () => void;
 }
 
 const CATEGORIES: ('All' | JournalCategory)[] = [
@@ -56,6 +62,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onOpenThemeCustomizer,
   isDesktopCollapsed = false,
   onToggleDesktopCollapse,
+  user,
+  isGuest,
+  onSignOut,
+  onSignIn,
 }) => {
   const { currentTheme, accentColorId } = useTheme();
   const [searchQuery, setSearchQuery] = useState('');
@@ -161,6 +171,17 @@ export const Sidebar: React.FC<SidebarProps> = ({
             </div>
 
             <div className="flex items-center gap-1 shrink-0">
+              {/* Mobile Close Button */}
+              <button
+                type="button"
+                onClick={onCloseMobile}
+                className="lg:hidden p-1.5 rounded-lg hover:bg-stone-200/50 transition-colors cursor-pointer"
+                style={{ color: currentTheme.textMuted }}
+                title="Close Sidebar"
+              >
+                <X className="w-4 h-4" />
+              </button>
+
               {/* 1-Click Desktop Collapse Button */}
               {onToggleDesktopCollapse && (
                 <button
@@ -516,6 +537,55 @@ export const Sidebar: React.FC<SidebarProps> = ({
             })
           )}
         </div>
+
+        {/* User Account & Direct Sign Out Card */}
+        {(user || isGuest) && (
+          <div
+            className="p-3 border-t flex flex-col gap-2"
+            style={{
+              borderColor: currentTheme.borderColor,
+              backgroundColor: `${currentTheme.bgMain}95`,
+            }}
+          >
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2 min-w-0">
+                {user?.photoURL ? (
+                  <img
+                    src={user.photoURL}
+                    alt={user.displayName || 'Google Account'}
+                    referrerPolicy="no-referrer"
+                    className="w-8 h-8 rounded-full border border-stone-300 shadow-2xs object-cover flex-shrink-0"
+                  />
+                ) : (
+                  <div className="w-8 h-8 rounded-full bg-stone-900 text-white font-bold text-xs flex items-center justify-center shadow-2xs flex-shrink-0">
+                    {user?.displayName ? user.displayName[0].toUpperCase() : user?.email ? user.email[0].toUpperCase() : 'G'}
+                  </div>
+                )}
+                <div className="flex flex-col min-w-0">
+                  <span className="text-xs font-semibold truncate" style={{ color: currentTheme.textMain }}>
+                    {user?.displayName || (isGuest ? 'Guest Explorer' : 'Google Account')}
+                  </span>
+                  <span className="text-[10px] truncate opacity-75" style={{ color: currentTheme.textMuted }}>
+                    {user?.email || (isGuest ? 'Ephemeral Session' : 'Firestore Encrypted')}
+                  </span>
+                </div>
+              </div>
+
+              {onSignOut && (
+                <button
+                  id="sidebar-sign-out-button"
+                  type="button"
+                  onClick={onSignOut}
+                  className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-bold text-rose-700 dark:text-rose-300 bg-rose-50 dark:bg-rose-950/40 hover:bg-rose-100 dark:hover:bg-rose-900/60 border border-rose-200 dark:border-rose-800 shadow-2xs transition-all cursor-pointer flex-shrink-0 active:scale-95"
+                  title="Lock session & sign out from your account"
+                >
+                  <LogOut className="w-3.5 h-3.5" />
+                  <span className="text-[11px]">Sign Out</span>
+                </button>
+              )}
+            </div>
+          </div>
+        )}
 
         {/* Footer info */}
         <div

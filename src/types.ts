@@ -8,9 +8,22 @@ export type JournalCategory =
   | 'Goal Setting'
   | 'General';
 
+export interface UpliftingVideo {
+  id: string;
+  title: string;
+  description: string;
+  category: 'animals' | 'laughter' | 'comedy' | 'nature';
+  videoUrl: string;
+  embedUrl?: string;
+  thumbnailUrl?: string;
+  duration?: string;
+  soundtrack?: string;
+  quote?: string;
+}
+
 export interface MediaAttachment {
   id: string;
-  type: 'photo' | 'gif';
+  type: 'photo' | 'gif' | 'video';
   url: string;
   title?: string;
   caption?: string;
@@ -32,6 +45,7 @@ export interface InteractionMessage {
   timestamp: string;
   attachments?: MediaAttachment[];
   groundingSources?: GroundingSource[];
+  upliftingVideo?: UpliftingVideo;
 }
 
 export interface JournalLocation {

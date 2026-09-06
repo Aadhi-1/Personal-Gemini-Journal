@@ -66,22 +66,22 @@ export const Navbar: React.FC<NavbarProps> = ({
         color: currentTheme.textMain,
       }}
     >
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+      <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-2">
         {/* Brand & Logo */}
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 sm:gap-3 min-w-0">
           <div
-            className="w-10 h-10 rounded-2xl flex items-center justify-center text-white shadow-xs transition-colors shrink-0"
+            className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl sm:rounded-2xl flex items-center justify-center text-white shadow-xs transition-colors shrink-0"
             style={{ backgroundColor: ACCENT_COLORS[accentColorId].hex }}
           >
-            <Sparkles className="w-5 h-5" />
+            <Sparkles className="w-4 h-4 sm:w-5 sm:h-5" />
           </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <span className="font-bold tracking-tight text-base sm:text-lg">
+          <div className="min-w-0">
+            <div className="flex items-center gap-1.5 sm:gap-2">
+              <span className="font-bold tracking-tight text-sm sm:text-base md:text-lg truncate">
                 Reflections
               </span>
               <span
-                className="text-[11px] px-2 py-0.5 rounded-full font-semibold border"
+                className="hidden sm:inline-flex text-[11px] px-2 py-0.5 rounded-full font-semibold border shrink-0"
                 style={{
                   backgroundColor: `${ACCENT_COLORS[accentColorId].hex}20`,
                   borderColor: `${ACCENT_COLORS[accentColorId].hex}40`,
@@ -252,13 +252,64 @@ export const Navbar: React.FC<NavbarProps> = ({
             <ShieldCheck className="w-4 h-4 text-emerald-600" />
             <span>Zero-Trust</span>
           </button>
+        </div>
 
-          {/* User Profile / Google SSO */}
-          {user ? (
-            <div className="flex items-center gap-2 pl-2 border-l" style={{ borderColor: currentTheme.borderColor }}>
-              {isGuest ? (
+        {/* Global Right-Side Controls: Always-Visible User Profile & Sign Out Button */}
+        <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+          {/* Quick Voice Check-in on tablet only (on phone it is in 3-dots menu) */}
+          {user && onOpenVoiceCheckIn && (
+            <button
+              id="mobile-voice-checkin-quick"
+              type="button"
+              onClick={onOpenVoiceCheckIn}
+              className="hidden md:flex xl:hidden items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-bold text-white shadow-xs active:scale-95 transition-all cursor-pointer shrink-0"
+              style={{ backgroundColor: ACCENT_COLORS[accentColorId].hex }}
+              title="Voice Check-in"
+            >
+              <Mic className="w-4 h-4 animate-pulse" />
+              <span>Voice</span>
+            </button>
+          )}
+
+          {/* Quick Theme Switcher on tablet only */}
+          {onOpenThemeCustomizer && (
+            <button
+              type="button"
+              onClick={onOpenThemeCustomizer}
+              className="hidden md:flex xl:hidden p-2 rounded-xl border shadow-2xs active:scale-95 transition-all cursor-pointer shrink-0"
+              style={{
+                borderColor: currentTheme.borderColor,
+                backgroundColor: currentTheme.bgSurface,
+                color: currentTheme.textMain,
+              }}
+              title="Change Theme & AI Voice"
+            >
+              <Palette className="w-4 h-4" style={{ color: ACCENT_COLORS[accentColorId].hex }} />
+            </button>
+          )}
+
+          {/* The 3-Dots Consolidated Kebab Menu Button for Mobile & Tablet */}
+          <button
+            id="navbar-mobile-kebab-menu"
+            type="button"
+            onClick={() => setIsMobileMenuOpen(true)}
+            className="flex xl:hidden p-2 rounded-xl border shadow-2xs active:scale-95 transition-all cursor-pointer items-center justify-center shrink-0"
+            style={{
+              borderColor: currentTheme.borderColor,
+              backgroundColor: currentTheme.bgSurface,
+              color: currentTheme.textMain,
+            }}
+            title="Open Full Features Menu"
+          >
+            <MoreVertical className="w-4 h-4 sm:w-5 sm:h-5" />
+          </button>
+
+          {/* User Profile & Direct Sign Out Button - ALWAYS VISIBLE ON ALL SCREENS */}
+          {(user || isGuest) ? (
+            <div className="flex items-center gap-1.5 sm:gap-2 pl-1.5 sm:pl-2 border-l" style={{ borderColor: currentTheme.borderColor }}>
+              {isGuest || !user ? (
                 <>
-                  <span className="text-[11px] px-2 py-0.5 rounded-full font-semibold bg-amber-100 text-amber-900 border border-amber-300">
+                  <span className="text-[11px] px-2 py-0.5 rounded-full font-semibold bg-amber-100 text-amber-900 border border-amber-300 hidden md:inline-block">
                     Guest Mode
                   </span>
                   {onSignIn && (
@@ -266,55 +317,63 @@ export const Navbar: React.FC<NavbarProps> = ({
                       id="navbar-google-sso-button"
                       type="button"
                       onClick={onSignIn}
-                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold text-white bg-stone-900 hover:bg-stone-800 transition-all shadow-xs cursor-pointer active:scale-95"
+                      className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-semibold text-white bg-stone-900 hover:bg-stone-800 transition-all shadow-xs cursor-pointer active:scale-95 shrink-0"
                       title="Connect Google Single Sign-On to persist in Cloud Firestore"
                     >
-                      <svg className="w-3.5 h-3.5" viewBox="0 0 24 24">
+                      <svg className="w-3.5 h-3.5 shrink-0" viewBox="0 0 24 24">
                         <path fill="#EA4335" d="M12 5c1.6 0 3 .6 4.1 1.6l3.1-3.1C17.3 1.7 14.8 1 12 1 7.5 1 3.7 3.6 1.9 7.3l3.7 2.9C6.5 7.4 9 5 12 5z"/>
                         <path fill="#4285F4" d="M23.5 12.3c0-.8-.1-1.7-.2-2.3H12v4.6h6.5c-.3 1.5-1.1 2.8-2.4 3.7l3.7 2.9c2.2-2 3.7-5 3.7-8.9z"/>
                         <path fill="#FBBC05" d="M5.6 14.8c-.2-.7-.4-1.5-.4-2.8s.2-2.1.4-2.8L1.9 6.3C.7 8.7 0 10.3 0 12s.7 3.3 1.9 5.7l3.7-2.9z"/>
                         <path fill="#34A853" d="M12 23c3.2 0 6-1.1 8-3l-3.7-2.9c-1.1.7-2.5 1.2-4.3 1.2-3 0-5.5-2.4-6.4-5.2L1.9 16c1.8 3.7 5.6 7 10.1 7z"/>
                       </svg>
-                      <span>Sign In with Google</span>
+                      <span className="hidden sm:inline">Sign In</span>
                     </button>
                   )}
+                  <button
+                    id="sign-out-button"
+                    type="button"
+                    onClick={onSignOut}
+                    className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-xl text-xs font-bold text-rose-700 dark:text-rose-300 bg-rose-50 dark:bg-rose-950/40 hover:bg-rose-100 dark:hover:bg-rose-900/60 border border-rose-200 dark:border-rose-800 transition-all cursor-pointer shadow-2xs active:scale-95 shrink-0"
+                    title="Sign out and reset session"
+                  >
+                    <LogOut className="w-3.5 h-3.5 shrink-0" />
+                    <span>Sign Out</span>
+                  </button>
                 </>
               ) : (
-                <div className="flex items-center gap-2">
-                  {user.photoURL ? (
-                    <img
-                      src={user.photoURL}
-                      alt={user.displayName || 'Google Account'}
-                      referrerPolicy="no-referrer"
-                      className="w-7 h-7 rounded-full border border-stone-300 shadow-2xs object-cover"
-                    />
-                  ) : (
-                    <div className="w-7 h-7 rounded-full bg-stone-900 text-white font-bold text-xs flex items-center justify-center shadow-2xs">
-                      {user.displayName ? user.displayName[0].toUpperCase() : user.email ? user.email[0].toUpperCase() : 'G'}
+                <>
+                  <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+                    {user.photoURL ? (
+                      <img
+                        src={user.photoURL}
+                        alt={user.displayName || 'Google Account'}
+                        referrerPolicy="no-referrer"
+                        className="w-7 h-7 rounded-full border border-stone-300 shadow-2xs object-cover shrink-0"
+                      />
+                    ) : (
+                      <div className="w-7 h-7 rounded-full bg-stone-900 text-white font-bold text-xs flex items-center justify-center shadow-2xs shrink-0">
+                        {user.displayName ? user.displayName[0].toUpperCase() : user.email ? user.email[0].toUpperCase() : 'G'}
+                      </div>
+                    )}
+                    <div className="hidden lg:flex flex-col text-left">
+                      <span className="text-xs font-semibold max-w-[120px] truncate">{user.displayName || 'Google Account'}</span>
+                      <span className="text-[10px] opacity-70 max-w-[120px] truncate" style={{ color: currentTheme.textMuted }}>{user.email}</span>
                     </div>
-                  )}
-                  <div className="hidden 2xl:flex flex-col text-left">
-                    <span className="text-xs font-semibold max-w-[110px] truncate">{user.displayName || 'Google Account'}</span>
-                    <span className="text-[10px] opacity-70 max-w-[110px] truncate" style={{ color: currentTheme.textMuted }}>{user.email}</span>
                   </div>
-                </div>
-              )}
 
-              <button
-                id="sign-out-button"
-                type="button"
-                onClick={onSignOut}
-                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-medium border transition-colors cursor-pointer"
-                style={{
-                  borderColor: currentTheme.borderColor,
-                  backgroundColor: currentTheme.bgSurface,
-                  color: currentTheme.textMain,
-                }}
-                title="Lock session & sign out"
-              >
-                <LogOut className="w-3.5 h-3.5" />
-                <span>Sign Out</span>
-              </button>
+                  {/* PROMINENT DIRECT SIGN OUT BUTTON */}
+                  <button
+                    id="sign-out-button"
+                    type="button"
+                    onClick={onSignOut}
+                    className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-xl text-xs font-bold text-rose-700 dark:text-rose-300 bg-rose-50 dark:bg-rose-950/40 hover:bg-rose-100 dark:hover:bg-rose-900/60 border border-rose-200 dark:border-rose-800 transition-all cursor-pointer shadow-2xs active:scale-95 shrink-0"
+                    title="Lock session & sign out from Firebase"
+                  >
+                    <LogOut className="w-3.5 h-3.5 shrink-0" />
+                    <span>Sign Out</span>
+                  </button>
+                </>
+              )}
             </div>
           ) : (
             onSignIn && (
@@ -337,57 +396,6 @@ export const Navbar: React.FC<NavbarProps> = ({
               </div>
             )
           )}
-        </div>
-
-        {/* Mobile & Tablet Quick Actions (Visible below XL screens) */}
-        <div className="flex xl:hidden items-center gap-2">
-          {/* Quick Voice Check-in on phone/tablet */}
-          {user && onOpenVoiceCheckIn && (
-            <button
-              id="mobile-voice-checkin-quick"
-              type="button"
-              onClick={onOpenVoiceCheckIn}
-              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-bold text-white shadow-xs active:scale-95 transition-all cursor-pointer"
-              style={{ backgroundColor: ACCENT_COLORS[accentColorId].hex }}
-              title="Voice Check-in"
-            >
-              <Mic className="w-4 h-4 animate-pulse" />
-              <span className="hidden sm:inline">Voice</span>
-            </button>
-          )}
-
-          {/* Quick Theme Switcher */}
-          {onOpenThemeCustomizer && (
-            <button
-              type="button"
-              onClick={onOpenThemeCustomizer}
-              className="p-2 rounded-xl border shadow-2xs active:scale-95 transition-all cursor-pointer"
-              style={{
-                borderColor: currentTheme.borderColor,
-                backgroundColor: currentTheme.bgSurface,
-                color: currentTheme.textMain,
-              }}
-              title="Change Theme & AI Voice"
-            >
-              <Palette className="w-4 h-4" style={{ color: ACCENT_COLORS[accentColorId].hex }} />
-            </button>
-          )}
-
-          {/* The 3-Dots Consolidated Kebab Menu Button for Mobile & Tablet */}
-          <button
-            id="navbar-mobile-kebab-menu"
-            type="button"
-            onClick={() => setIsMobileMenuOpen(true)}
-            className="p-2 rounded-xl border shadow-2xs active:scale-95 transition-all cursor-pointer flex items-center justify-center"
-            style={{
-              borderColor: currentTheme.borderColor,
-              backgroundColor: currentTheme.bgSurface,
-              color: currentTheme.textMain,
-            }}
-            title="Open Full Features Menu"
-          >
-            <MoreVertical className="w-5 h-5" />
-          </button>
         </div>
       </div>
 
@@ -684,9 +692,9 @@ export const Navbar: React.FC<NavbarProps> = ({
             </div>
 
             {/* Bottom Actions: Google SSO / Sign Out */}
-            {user ? (
+            {(user || isGuest) ? (
               <div className="pt-4 mt-6 border-t space-y-2" style={{ borderColor: currentTheme.borderColor }}>
-                {isGuest ? (
+                {isGuest || !user ? (
                   <>
                     {onSignIn && (
                       <button
@@ -707,16 +715,16 @@ export const Navbar: React.FC<NavbarProps> = ({
                       </button>
                     )}
                     <button
+                      id="mobile-menu-sign-out-btn"
                       type="button"
                       onClick={() => {
                         setIsMobileMenuOpen(false);
                         onSignOut();
                       }}
-                      className="w-full flex items-center justify-center gap-2 p-2.5 rounded-xl border text-xs font-medium hover:opacity-80 transition-all cursor-pointer"
-                      style={{ borderColor: currentTheme.borderColor }}
+                      className="w-full flex items-center justify-center gap-2 p-2.5 rounded-xl border text-xs font-bold text-rose-700 dark:text-rose-300 bg-rose-50 dark:bg-rose-950/40 hover:bg-rose-100 dark:hover:bg-rose-900/60 border-rose-200 dark:border-rose-800 transition-all cursor-pointer shadow-2xs active:scale-95"
                     >
-                      <LogOut className="w-3.5 h-3.5 text-rose-500" />
-                      <span>Exit Guest Mode</span>
+                      <LogOut className="w-4 h-4 text-rose-600 dark:text-rose-400" />
+                      <span>Sign Out</span>
                     </button>
                   </>
                 ) : (
@@ -741,16 +749,16 @@ export const Navbar: React.FC<NavbarProps> = ({
                     </div>
 
                     <button
+                      id="mobile-menu-sign-out-btn"
                       type="button"
                       onClick={() => {
                         setIsMobileMenuOpen(false);
                         onSignOut();
                       }}
-                      className="w-full flex items-center justify-center gap-2 p-2.5 rounded-xl border text-xs font-semibold hover:opacity-80 transition-all cursor-pointer"
-                      style={{ borderColor: currentTheme.borderColor }}
+                      className="w-full flex items-center justify-center gap-2 p-2.5 rounded-xl border text-xs font-bold text-rose-700 dark:text-rose-300 bg-rose-50 dark:bg-rose-950/40 hover:bg-rose-100 dark:hover:bg-rose-900/60 border-rose-200 dark:border-rose-800 transition-all cursor-pointer shadow-2xs active:scale-95"
                     >
-                      <LogOut className="w-4 h-4 text-rose-500" />
-                      <span>Lock Session & Sign Out</span>
+                      <LogOut className="w-4 h-4 text-rose-600 dark:text-rose-400" />
+                      <span>Sign Out</span>
                     </button>
                   </>
                 )}

@@ -105,11 +105,11 @@ export const GeminiToolsModal: React.FC<GeminiToolsModalProps> = ({
   return (
     <div
       id="gemini-tools-modal-backdrop"
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-150"
+      className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-150"
     >
       <div
         id="gemini-tools-modal"
-        className="w-full max-w-2xl rounded-2xl border shadow-2xl overflow-hidden flex flex-col max-h-[90vh] transition-colors"
+        className="w-full max-w-2xl rounded-2xl border shadow-2xl overflow-hidden flex flex-col max-h-[92vh] sm:max-h-[90vh] transition-colors"
         style={{
           backgroundColor: currentTheme.bgSurface,
           borderColor: currentTheme.borderColor,
@@ -118,10 +118,10 @@ export const GeminiToolsModal: React.FC<GeminiToolsModalProps> = ({
       >
         {/* Header */}
         <div
-          className="px-6 py-4 border-b flex items-center justify-between"
+          className="px-4 sm:px-6 py-3 sm:py-4 border-b flex items-center justify-between"
           style={{ borderColor: currentTheme.borderColor }}
         >
-          <div className="flex items-center gap-2.5">
+          <div className="flex items-center gap-2 sm:gap-2.5">
             <div
               className="w-8 h-8 rounded-xl flex items-center justify-center text-white shrink-0 shadow-xs"
               style={{ backgroundColor: ACCENT_COLORS[accentColorId].hex }}
@@ -129,8 +129,8 @@ export const GeminiToolsModal: React.FC<GeminiToolsModalProps> = ({
               <Sparkles className="w-4 h-4" />
             </div>
             <div>
-              <h3 className="font-bold text-sm sm:text-base">Gemini Mindful Tools & Perspectives</h3>
-              <p className="text-[11px] opacity-75" style={{ color: currentTheme.textMuted }}>
+              <h3 className="font-bold text-xs sm:text-base truncate">Gemini Mindful Tools & Perspectives</h3>
+              <p className="text-[10px] sm:text-[11px] opacity-75 line-clamp-1" style={{ color: currentTheme.textMuted }}>
                 Specialized psychology engines powered by Gemini 3.6 Flash & Google Intelligence
               </p>
             </div>
@@ -139,7 +139,7 @@ export const GeminiToolsModal: React.FC<GeminiToolsModalProps> = ({
           <button
             type="button"
             onClick={onClose}
-            className="p-1.5 rounded-lg border hover:bg-stone-100 transition-colors cursor-pointer"
+            className="p-1.5 rounded-lg border hover:bg-stone-100 transition-colors cursor-pointer shrink-0"
             style={{ borderColor: currentTheme.borderColor }}
           >
             <X className="w-4 h-4" />
@@ -148,7 +148,7 @@ export const GeminiToolsModal: React.FC<GeminiToolsModalProps> = ({
 
         {/* Feature Selector Pills */}
         <div
-          className="p-4 border-b flex items-center gap-2 overflow-x-auto shrink-0"
+          className="p-2.5 sm:p-4 border-b flex items-center gap-1.5 sm:gap-2 overflow-x-auto shrink-0 no-scrollbar"
           style={{ borderColor: currentTheme.borderColor, backgroundColor: currentTheme.bgMain }}
         >
           <button
@@ -217,12 +217,12 @@ export const GeminiToolsModal: React.FC<GeminiToolsModalProps> = ({
         </div>
 
         {/* Modal Body */}
-        <div className="p-6 overflow-y-auto flex-1 space-y-4">
+        <div className="p-3.5 sm:p-6 overflow-y-auto flex-1 space-y-4">
           {/* Sub-options for Perspective */}
           {selectedFeature === 'perspective' && (
-            <div className="p-3 rounded-xl border flex items-center justify-between gap-3 text-xs" style={{ borderColor: currentTheme.borderColor }}>
+            <div className="p-3 rounded-xl border flex flex-col sm:flex-row sm:items-center justify-between gap-2 sm:gap-3 text-xs" style={{ borderColor: currentTheme.borderColor }}>
               <span className="font-semibold text-stone-600 dark:text-stone-300">Choose Wisdom Lens:</span>
-              <div className="flex items-center gap-1.5">
+              <div className="flex flex-wrap items-center gap-1.5">
                 <button
                   type="button"
                   onClick={() => setPerspectiveType('stoic')}
@@ -411,14 +411,14 @@ export const GeminiToolsModal: React.FC<GeminiToolsModalProps> = ({
 
         {/* Footer */}
         <div
-          className="px-6 py-3 border-t flex items-center justify-between text-2xs opacity-75 shrink-0"
+          className="px-4 sm:px-6 py-2.5 sm:py-3 border-t flex items-center justify-between text-2xs opacity-75 shrink-0"
           style={{ borderColor: currentTheme.borderColor, color: currentTheme.textMuted }}
         >
-          <span>Grounding & Resilience Fallback Chain Active</span>
+          <span className="truncate pr-2">Grounding & Fallback Active</span>
           <button
             type="button"
             onClick={onClose}
-            className="px-3 py-1 rounded-lg border hover:bg-stone-100 transition-colors cursor-pointer"
+            className="px-3 py-1 rounded-lg border hover:bg-stone-100 transition-colors cursor-pointer shrink-0"
             style={{ borderColor: currentTheme.borderColor }}
           >
             Close
