@@ -7,7 +7,7 @@ import {
   User,
 } from 'firebase/auth';
 import {
-  getFirestore,
+  initializeFirestore,
   doc,
   getDocFromServer,
   collection,
@@ -24,8 +24,14 @@ import { FirestoreErrorInfo, OperationType, InteractionEntry } from './types';
 // Initialize Firebase App
 const app = initializeApp(firebaseConfig);
 
-// CRITICAL: The app will break without specifying firebaseConfig.firestoreDatabaseId
-export const db = getFirestore(app, firebaseConfig.firestoreDatabaseId);
+// CRITICAL: Force long polling to bypass iframe/proxy stream buffering delays and prevent 10s timeout errors
+export const db = initializeFirestore(
+  app,
+  {
+    experimentalForceLongPolling: true,
+  },
+  firebaseConfig.firestoreDatabaseId
+);
 export const auth = getAuth(app);
 
 export const googleProvider = new GoogleAuthProvider();
@@ -135,9 +141,14 @@ export async function testConnection(): Promise<boolean> {
   try {
     await getDocFromServer(doc(db, 'test', 'connection'));
     return true;
-  } catch (error) {
-    if (error instanceof Error && error.message.includes('the client is offline')) {
-      console.info('Firebase client is offline. Verify network connection.');
+  } catch (error: any) {
+    const errorMsg = error instanceof Error ? error.message : String(error);
+    if (
+      errorMsg.includes('the client is offline') ||
+      errorMsg.includes('Could not reach Cloud Firestore backend') ||
+      errorMsg.includes('offline mode')
+    ) {
+      console.info('Firebase Firestore client operates with local cache until cloud backend reconnects.');
       return false;
     }
     // Permission denied confirms connection successfully reached Firestore server

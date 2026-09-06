@@ -70,7 +70,7 @@ export const THEME_PRESETS: ThemePreset[] = [
     description: 'Serene warm stone, golden amber highlights, and calming parchment tones.',
     isDark: false,
     bgMain: '#faf8f5',
-    bgSurface: '#ffffff',
+    bgSurface: '#f5f0e8',
     borderColor: '#e7e5e4',
     textMain: '#1c1917',
     textMuted: '#78716c',
@@ -83,7 +83,7 @@ export const THEME_PRESETS: ThemePreset[] = [
     description: 'Earthy moss, soothing eucalyptus greens, and mindful grounding tones.',
     isDark: false,
     bgMain: '#f4f7f4',
-    bgSurface: '#ffffff',
+    bgSurface: '#ebf2ec',
     borderColor: '#d6e2d8',
     textMain: '#142318',
     textMuted: '#586b5c',
@@ -109,7 +109,7 @@ export const THEME_PRESETS: ThemePreset[] = [
     description: 'Cool crisp arctic slate, ice cyan reflections, and deep ocean navy tones.',
     isDark: false,
     bgMain: '#f0f5fa',
-    bgSurface: '#ffffff',
+    bgSurface: '#e5eef7',
     borderColor: '#d2dfec',
     textMain: '#0c1b2a',
     textMuted: '#53687e',
@@ -122,7 +122,7 @@ export const THEME_PRESETS: ThemePreset[] = [
     description: 'Dusty blush, terracotta earth, and sunset hues for gentle, tender contemplation.',
     isDark: false,
     bgMain: '#fdf6f7',
-    bgSurface: '#ffffff',
+    bgSurface: '#f7ebe8',
     borderColor: '#fadbe0',
     textMain: '#2d1419',
     textMuted: '#7d5961',
@@ -148,7 +148,7 @@ export const THEME_PRESETS: ThemePreset[] = [
     description: 'High-contrast editorial typography, pure grayscale, and architectural precision.',
     isDark: false,
     bgMain: '#f8f9fa',
-    bgSurface: '#ffffff',
+    bgSurface: '#f1f3f5',
     borderColor: '#e2e8f0',
     textMain: '#0f172a',
     textMuted: '#64748b',
@@ -161,7 +161,7 @@ export const THEME_PRESETS: ThemePreset[] = [
     description: 'Warm Mediterranean clay, Tuscan brick, and golden dusk sun warmth.',
     isDark: false,
     bgMain: '#fbf4ef',
-    bgSurface: '#ffffff',
+    bgSurface: '#f5ece4',
     borderColor: '#eddcd2',
     textMain: '#291711',
     textMuted: '#7f5548',
@@ -382,7 +382,7 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         return saved as ThemeId;
       }
     }
-    return 'amber';
+    return 'amethyst';
   });
 
   const [accentColorId, setAccentColorIdState] = useState<AccentColorId>(() => {
@@ -392,7 +392,7 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         return saved as AccentColorId;
       }
     }
-    return 'amber';
+    return 'violet';
   });
 
   const [activeVoiceId, setActiveVoiceIdState] = useState<VoicePersonaId>(() => {
@@ -438,6 +438,19 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const currentTheme = THEME_PRESETS.find((t) => t.id === themeId) || THEME_PRESETS[0];
   const accent = ACCENT_COLORS[accentColorId] || ACCENT_COLORS.amber;
   const activeVoice = resolveVoicePersona(activeVoiceId);
+
+  // Synchronize document & body background to active theme to completely eliminate white gaps
+  useEffect(() => {
+    if (typeof document !== 'undefined') {
+      document.documentElement.style.backgroundColor = currentTheme.bgMain;
+      document.body.style.backgroundColor = currentTheme.bgMain;
+      if (currentTheme.isDark) {
+        document.documentElement.classList.add('dark');
+      } else {
+        document.documentElement.classList.remove('dark');
+      }
+    }
+  }, [currentTheme]);
 
   const setThemeId = (id: ThemeId) => {
     setThemeIdState(id);

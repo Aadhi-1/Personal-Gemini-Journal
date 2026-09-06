@@ -1,5 +1,6 @@
 import React from 'react';
 import { Sparkles, Shield, Lock, Brain, MessageSquare, Database, ArrowRight } from 'lucide-react';
+import { useTheme } from '../theme/ThemeContext';
 
 interface LandingPageProps {
   onSignIn: () => void;
@@ -14,24 +15,33 @@ export const LandingPage: React.FC<LandingPageProps> = ({
   isLoading,
   errorMessage,
 }) => {
+  const { currentTheme } = useTheme();
+
   return (
-    <div id="landing-page" className="min-h-[calc(100vh-4rem)] flex flex-col justify-between">
+    <div id="landing-page" className="min-h-[calc(100vh-4rem)] flex flex-col justify-between transition-colors" style={{ backgroundColor: currentTheme.bgMain, color: currentTheme.textMain }}>
       {/* Hero Section */}
       <main className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 pt-12 pb-16">
         <div className="text-center max-w-3xl mx-auto">
           {/* Badge */}
-          <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-amber-50 border border-amber-200/80 text-amber-900 text-xs font-medium mb-6 shadow-xs">
-            <Sparkles className="w-3.5 h-3.5 text-amber-600" />
+          <div
+            className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium mb-6 shadow-xs border"
+            style={{
+              backgroundColor: currentTheme.bgSurface,
+              borderColor: currentTheme.borderColor,
+              color: currentTheme.textMain,
+            }}
+          >
+            <Sparkles className="w-3.5 h-3.5 text-amber-500" />
             <span>Private AI Reflections with Gemini 3.6 Flash & Cloud Firestore</span>
           </div>
 
           {/* Heading */}
-          <h1 className="text-4xl sm:text-5xl font-semibold text-stone-900 tracking-tight leading-tight mb-6">
+          <h1 className="text-4xl sm:text-5xl font-semibold tracking-tight leading-tight mb-6" style={{ color: currentTheme.textMain }}>
             A secure, contemplative journal for your thoughts and ideas.
           </h1>
 
           {/* Description */}
-          <p className="text-lg text-stone-600 leading-relaxed mb-8 max-w-2xl mx-auto">
+          <p className="text-lg leading-relaxed mb-8 max-w-2xl mx-auto opacity-80" style={{ color: currentTheme.textMuted }}>
             Engage in thoughtful multi-turn dialogues with Gemini, explore life decisions, unpack creative blocks, and save private insights to your isolated Cloud Firestore vault.
           </p>
 
@@ -42,7 +52,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
               type="button"
               onClick={onSignIn}
               disabled={isLoading}
-              className="w-full sm:w-auto flex items-center justify-center gap-3 px-7 py-3.5 rounded-xl text-sm font-semibold text-white bg-stone-900 hover:bg-stone-800 active:scale-[0.99] transition-all shadow-md hover:shadow-lg disabled:opacity-60 disabled:cursor-not-allowed cursor-pointer"
+              className="w-full sm:w-auto flex items-center justify-center gap-3 px-7 py-3.5 rounded-xl text-sm font-semibold text-white bg-stone-900 dark:bg-stone-800 hover:bg-stone-800 dark:hover:bg-stone-700 active:scale-[0.99] transition-all shadow-md hover:shadow-lg disabled:opacity-60 disabled:cursor-not-allowed cursor-pointer"
             >
               {isLoading ? (
                 <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
@@ -75,59 +85,82 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                 id="explore-guest-mode-button"
                 type="button"
                 onClick={onExploreGuest}
-                className="w-full sm:w-auto flex items-center justify-center gap-2 px-6 py-3.5 rounded-xl text-sm font-semibold text-stone-700 bg-white hover:bg-stone-50 border border-stone-300 active:scale-[0.99] transition-all shadow-xs cursor-pointer"
+                className="w-full sm:w-auto flex items-center justify-center gap-2 px-6 py-3.5 rounded-xl text-sm font-semibold border active:scale-[0.99] transition-all shadow-xs cursor-pointer"
+                style={{
+                  backgroundColor: currentTheme.bgSurface,
+                  borderColor: currentTheme.borderColor,
+                  color: currentTheme.textMain,
+                }}
               >
-                <Sparkles className="w-4 h-4 text-amber-600" />
+                <Sparkles className="w-4 h-4 text-amber-500" />
                 <span>Try Instant Guest Mode</span>
               </button>
             )}
           </div>
 
           {errorMessage && (
-            <div className="p-3 bg-red-50 border border-red-200 text-red-700 text-xs rounded-lg max-w-md mx-auto mb-6">
+            <div className="p-3 bg-red-500/10 border border-red-500/30 text-red-500 text-xs rounded-lg max-w-md mx-auto mb-6">
               {errorMessage}
             </div>
           )}
 
-          <p className="text-xs text-stone-500">
+          <p className="text-xs opacity-70" style={{ color: currentTheme.textMuted }}>
             Federated Google Authentication • No passwords stored • Strict user data isolation
           </p>
         </div>
 
         {/* Feature Highlights Grid */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-16">
-          <div className="p-6 rounded-2xl bg-white border border-stone-200/80 shadow-xs hover:border-stone-300 transition-colors">
-            <div className="w-10 h-10 rounded-xl bg-amber-50 border border-amber-200/60 flex items-center justify-center text-amber-700 mb-4">
+          <div
+            className="p-6 rounded-2xl border shadow-xs transition-colors"
+            style={{
+              backgroundColor: currentTheme.bgSurface,
+              borderColor: currentTheme.borderColor,
+            }}
+          >
+            <div className="w-10 h-10 rounded-xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-500 mb-4">
               <Lock className="w-5 h-5" />
             </div>
-            <h3 className="font-semibold text-stone-900 text-base mb-2">
+            <h3 className="font-semibold text-base mb-2" style={{ color: currentTheme.textMain }}>
               Strict User Isolation
             </h3>
-            <p className="text-sm text-stone-600 leading-relaxed">
-              Every journal entry is saved under your private UID document path (<code className="text-xs font-mono bg-stone-100 px-1 py-0.5 rounded text-stone-800">/users/{'{uid}'}/interactions</code>). Other users cannot read or write your thoughts.
+            <p className="text-sm leading-relaxed opacity-80" style={{ color: currentTheme.textMuted }}>
+              Every journal entry is saved under your private UID document path (<code className="text-xs font-mono px-1 py-0.5 rounded" style={{ backgroundColor: `${currentTheme.borderColor}80` }}>/users/{'{uid}'}/interactions</code>). Other users cannot read or write your thoughts.
             </p>
           </div>
 
-          <div className="p-6 rounded-2xl bg-white border border-stone-200/80 shadow-xs hover:border-stone-300 transition-colors">
-            <div className="w-10 h-10 rounded-xl bg-indigo-50 border border-indigo-200/60 flex items-center justify-center text-indigo-700 mb-4">
+          <div
+            className="p-6 rounded-2xl border shadow-xs transition-colors"
+            style={{
+              backgroundColor: currentTheme.bgSurface,
+              borderColor: currentTheme.borderColor,
+            }}
+          >
+            <div className="w-10 h-10 rounded-xl bg-indigo-500/10 border border-indigo-500/30 flex items-center justify-center text-indigo-500 mb-4">
               <Brain className="w-5 h-5" />
             </div>
-            <h3 className="font-semibold text-stone-900 text-base mb-2">
+            <h3 className="font-semibold text-base mb-2" style={{ color: currentTheme.textMain }}>
               Gemini 3.6 Flash Multi-Turn
             </h3>
-            <p className="text-sm text-stone-600 leading-relaxed">
+            <p className="text-sm leading-relaxed opacity-80" style={{ color: currentTheme.textMuted }}>
               Converse naturally with multiple turns. Choose between Deep Reflection, Summary & Takeaways, Creative Brainstorming, or Socratic inquiry modes.
             </p>
           </div>
 
-          <div className="p-6 rounded-2xl bg-white border border-stone-200/80 shadow-xs hover:border-stone-300 transition-colors">
-            <div className="w-10 h-10 rounded-xl bg-emerald-50 border border-emerald-200/60 flex items-center justify-center text-emerald-700 mb-4">
+          <div
+            className="p-6 rounded-2xl border shadow-xs transition-colors"
+            style={{
+              backgroundColor: currentTheme.bgSurface,
+              borderColor: currentTheme.borderColor,
+            }}
+          >
+            <div className="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-500 mb-4">
               <Shield className="w-5 h-5" />
             </div>
-            <h3 className="font-semibold text-stone-900 text-base mb-2">
+            <h3 className="font-semibold text-base mb-2" style={{ color: currentTheme.textMain }}>
               Zero-Exposure Secret Architecture
             </h3>
-            <p className="text-sm text-stone-600 leading-relaxed">
+            <p className="text-sm leading-relaxed opacity-80" style={{ color: currentTheme.textMuted }}>
               All Gemini AI requests are securely executed on the backend Express server with automated model fallbacks. API credentials are never bundled into client code.
             </p>
           </div>
@@ -135,7 +168,14 @@ export const LandingPage: React.FC<LandingPageProps> = ({
       </main>
 
       {/* Footer */}
-      <footer className="border-t border-stone-200 bg-stone-100/60 py-6 text-center text-xs text-stone-500">
+      <footer
+        className="border-t py-6 text-center text-xs opacity-75"
+        style={{
+          borderColor: currentTheme.borderColor,
+          backgroundColor: currentTheme.bgSurface,
+          color: currentTheme.textMuted,
+        }}
+      >
         <div className="max-w-5xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-2">
           <span>Gemini Reflections & Journal • Built with Firebase & Gemini API</span>
           <span>Firestore Enterprise Edition Rules Enforced</span>

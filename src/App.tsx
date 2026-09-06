@@ -24,7 +24,6 @@ import { VoiceCommandGuideModal } from './components/VoiceCommandGuideModal';
 import { AdminDashboardModal } from './components/AdminDashboardModal';
 import { ThemeCustomizerModal } from './components/ThemeCustomizerModal';
 import { VoiceCheckInModal } from './components/VoiceCheckInModal';
-import { ReflectionsMapModal } from './components/ReflectionsMapModal';
 import { Sparkles } from 'lucide-react';
 import { useTheme, ACCENT_COLORS } from './theme/ThemeContext';
 import { enclave, logSecurityEvent } from './crypto/workerClient';
@@ -112,7 +111,6 @@ export default function App() {
   const [isMoodInsightsOpen, setIsMoodInsightsOpen] = useState(false);
   const [isVoiceGuideOpen, setIsVoiceGuideOpen] = useState(false);
   const [isAdminDashboardOpen, setIsAdminDashboardOpen] = useState(false);
-  const [isReflectionsMapOpen, setIsReflectionsMapOpen] = useState(false);
   const [simulatedRole, setSimulatedRole] = useState<'superadmin' | 'admin' | 'user'>('superadmin');
 
   // Atmosphere, Custom Themes & Voice Concierge
@@ -429,7 +427,7 @@ export default function App() {
   return (
     <ScreenPrivacyGuard>
       <div
-        className="min-h-screen flex flex-col font-sans selection:bg-amber-100 selection:text-amber-900 transition-colors"
+        className="min-h-screen w-full max-w-full overflow-x-hidden flex flex-col font-sans selection:bg-amber-100 selection:text-amber-900 transition-colors"
         style={{
           backgroundColor: currentTheme.bgMain,
           color: currentTheme.textMain,
@@ -455,7 +453,6 @@ export default function App() {
           onOpenMoodInsights={() => setIsMoodInsightsOpen(true)}
           onOpenVoiceGuide={() => setIsVoiceGuideOpen(true)}
           onOpenAdminDashboard={() => setIsAdminDashboardOpen(true)}
-          onOpenReflectionsMap={() => setIsReflectionsMapOpen(true)}
           isAdmin={isActualAdmin}
           isDuressDecoy={isDuressDecoy}
         />
@@ -481,7 +478,6 @@ export default function App() {
               onCloseMobile={() => setIsMobileSidebarOpen(false)}
               onOpenMoodInsights={() => setIsMoodInsightsOpen(true)}
               onOpenThemeCustomizer={() => setIsThemeCustomizerOpen(true)}
-              onOpenReflectionsMap={() => setIsReflectionsMapOpen(true)}
               isDesktopCollapsed={isDesktopSidebarCollapsed}
               onToggleDesktopCollapse={() => setIsDesktopSidebarCollapsed(!isDesktopSidebarCollapsed)}
               user={currentUser}
@@ -611,20 +607,6 @@ export default function App() {
           isOpen={isThemeCustomizerOpen}
           onClose={() => setIsThemeCustomizerOpen(false)}
           onOpenVoiceCheckIn={() => setIsVoiceCheckInOpen(true)}
-        />
-
-        {/* Google Maps Reflections World Map Modal */}
-        <ReflectionsMapModal
-          isOpen={isReflectionsMapOpen}
-          onClose={() => setIsReflectionsMapOpen(false)}
-          entries={entries}
-          onSelectEntry={(entry) => {
-            setSelectedEntry(entry);
-            setIsReflectionsMapOpen(false);
-          }}
-          onCreateWithLocation={(loc) => {
-            handleCreateNewEntry(loc);
-          }}
         />
 
         {/* Voice Reflection Concierge Modal (Post-Login & On-Demand) */}

@@ -38,7 +38,6 @@ interface SidebarProps {
   isGuest?: boolean;
   onSignOut?: () => void;
   onSignIn?: () => void;
-  onOpenReflectionsMap?: () => void;
 }
 
 const CATEGORIES: ('All' | JournalCategory)[] = [
@@ -67,7 +66,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
   isGuest,
   onSignOut,
   onSignIn,
-  onOpenReflectionsMap,
 }) => {
   const { currentTheme, accentColorId } = useTheme();
   const [searchQuery, setSearchQuery] = useState('');
@@ -75,8 +73,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const [entryToDelete, setEntryToDelete] = useState<string | null>(null);
   const [isHeaderMenuOpen, setIsHeaderMenuOpen] = useState(false);
   const headerMenuRef = useRef<HTMLDivElement>(null);
-
-  const geotaggedCount = entries.filter((e) => Boolean(e.location?.lat && e.location?.lng)).length;
 
   // Close 3-dots menu on click outside
   useEffect(() => {
@@ -304,27 +300,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
                       </button>
                     )}
 
-                    {onOpenReflectionsMap && (
-                      <button
-                        id="sidebar-3dots-open-map"
-                        type="button"
-                        onClick={() => {
-                          setIsHeaderMenuOpen(false);
-                          onOpenReflectionsMap();
-                          onCloseMobile();
-                        }}
-                        className="w-full px-3 py-2 text-left hover:opacity-80 flex items-center gap-2.5 transition-colors cursor-pointer"
-                      >
-                        <MapPin className="w-4 h-4 text-emerald-500 shrink-0" />
-                        <div className="flex-1 min-w-0">
-                          <div className="font-semibold">Reflections World Map</div>
-                          <div className="text-[10px]" style={{ color: currentTheme.textMuted }}>
-                            Explore memories across Google Maps
-                          </div>
-                        </div>
-                      </button>
-                    )}
-
                     {searchQuery && (
                       <button
                         type="button"
@@ -371,55 +346,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 <X className="w-4 h-4" />
               </button>
             </div>
-          </div>
-
-          {/* Quick Action Bar: New Entry + Reflections Map */}
-          <div className="flex items-center gap-2">
-            <button
-              id="sidebar-new-reflection-btn"
-              type="button"
-              onClick={() => {
-                onNewEntry();
-                onCloseMobile();
-              }}
-              className="flex-1 px-3 py-2 rounded-xl text-white text-xs font-semibold hover:opacity-90 active:scale-95 transition-all shadow-2xs flex items-center justify-center gap-1.5 cursor-pointer"
-              style={{ backgroundColor: ACCENT_COLORS[accentColorId].hex }}
-            >
-              <Plus className="w-3.5 h-3.5" />
-              <span>New Entry</span>
-            </button>
-
-            {onOpenReflectionsMap && (
-              <button
-                id="sidebar-open-map-btn"
-                type="button"
-                onClick={() => {
-                  onOpenReflectionsMap();
-                  onCloseMobile();
-                }}
-                className="px-3 py-2 rounded-xl text-xs font-semibold border hover:opacity-90 active:scale-95 transition-all shadow-2xs flex items-center justify-center gap-1.5 cursor-pointer shrink-0"
-                style={{
-                  borderColor: currentTheme.borderColor,
-                  backgroundColor: currentTheme.bgMain,
-                  color: currentTheme.textMain,
-                }}
-                title="Explore Reflections on Google Maps"
-              >
-                <MapPin className="w-3.5 h-3.5 text-emerald-500" />
-                <span>Map</span>
-                {geotaggedCount > 0 && (
-                  <span
-                    className="ml-0.5 text-2xs px-1.5 py-0.2 rounded-full font-bold"
-                    style={{
-                      backgroundColor: `${ACCENT_COLORS[accentColorId].hex}20`,
-                      color: ACCENT_COLORS[accentColorId].hex,
-                    }}
-                  >
-                    {geotaggedCount}
-                  </span>
-                )}
-              </button>
-            )}
           </div>
 
           {/* Search Input */}

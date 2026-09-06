@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { User } from 'firebase/auth';
 import {
   Sparkles,
@@ -15,7 +15,7 @@ import {
   MoreVertical,
   X,
   ChevronRight,
-  MapPin,
+  ChevronDown,
 } from 'lucide-react';
 import { useTheme, ACCENT_COLORS } from '../theme/ThemeContext';
 
@@ -33,7 +33,6 @@ interface NavbarProps {
   onOpenAdminDashboard?: () => void;
   onOpenThemeCustomizer?: () => void;
   onOpenVoiceCheckIn?: () => void;
-  onOpenReflectionsMap?: () => void;
   isAdmin?: boolean;
   isDuressDecoy?: boolean;
 }
@@ -52,12 +51,25 @@ export const Navbar: React.FC<NavbarProps> = ({
   onOpenAdminDashboard,
   onOpenThemeCustomizer,
   onOpenVoiceCheckIn,
-  onOpenReflectionsMap,
   isAdmin,
   isDuressDecoy,
 }) => {
   const { currentTheme, accentColorId, activeVoice } = useTheme();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isToolsMenuOpen, setIsToolsMenuOpen] = useState(false);
+  const toolsMenuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (toolsMenuRef.current && !toolsMenuRef.current.contains(event.target as Node)) {
+        setIsToolsMenuOpen(false);
+      }
+    }
+    if (isToolsMenuOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+      return () => document.removeEventListener('mousedown', handleClickOutside);
+    }
+  }, [isToolsMenuOpen]);
 
   return (
     <header
@@ -69,22 +81,22 @@ export const Navbar: React.FC<NavbarProps> = ({
         color: currentTheme.textMain,
       }}
     >
-      <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-2">
+      <div className="w-full px-4 sm:px-6 lg:px-8 xl:px-12 h-16 flex items-center justify-between gap-3">
         {/* Brand & Logo */}
-        <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+        <div className="flex items-center gap-2 sm:gap-3 shrink-0 min-w-0">
           <div
             className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl sm:rounded-2xl flex items-center justify-center text-white shadow-xs transition-colors shrink-0"
             style={{ backgroundColor: ACCENT_COLORS[accentColorId].hex }}
           >
             <Sparkles className="w-4 h-4 sm:w-5 sm:h-5" />
           </div>
-          <div className="min-w-0">
+          <div className="min-w-0 shrink-0">
             <div className="flex items-center gap-1.5 sm:gap-2">
-              <span className="font-bold tracking-tight text-sm sm:text-base md:text-lg truncate">
+              <span className="font-bold tracking-tight text-sm sm:text-base md:text-lg truncate whitespace-nowrap">
                 Reflections
               </span>
               <span
-                className="hidden sm:inline-flex text-[11px] px-2 py-0.5 rounded-full font-semibold border shrink-0"
+                className="hidden sm:inline-flex text-[11px] px-2 py-0.5 rounded-full font-semibold border shrink-0 whitespace-nowrap"
                 style={{
                   backgroundColor: `${ACCENT_COLORS[accentColorId].hex}20`,
                   borderColor: `${ACCENT_COLORS[accentColorId].hex}40`,
@@ -94,13 +106,13 @@ export const Navbar: React.FC<NavbarProps> = ({
                 Zero-Knowledge
               </span>
             </div>
-            <p className="text-[11px] hidden md:block opacity-75" style={{ color: currentTheme.textMuted }}>
-              Ambient Voice Interface • FIDO2 Passkeys • Military-Grade Enclave
+            <p className="text-[11px] hidden 2xl:block opacity-75 truncate max-w-[240px] whitespace-nowrap" style={{ color: currentTheme.textMuted }}>
+              Ambient Voice • FIDO2 • Enclave
             </p>
           </div>
         </div>
 
-        {/* Desktop Buttons (Visible on XL screens) */}
+        {/* Desktop Buttons: Unified Responsive Toolbar (xl and above) */}
         <div className="hidden xl:flex items-center gap-2">
           {/* Voice Check-in Concierge Quick Button */}
           {user && onOpenVoiceCheckIn && (
@@ -108,7 +120,7 @@ export const Navbar: React.FC<NavbarProps> = ({
               id="open-voice-checkin-button"
               type="button"
               onClick={onOpenVoiceCheckIn}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold text-white shadow-xs active:scale-95 transition-all cursor-pointer"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold text-white shadow-xs active:scale-95 transition-all cursor-pointer shrink-0"
               style={{ backgroundColor: ACCENT_COLORS[accentColorId].hex }}
               title="Voice Check-in: Ask by voice whether to type or dictate your reflection"
             >
@@ -123,7 +135,7 @@ export const Navbar: React.FC<NavbarProps> = ({
               id="open-theme-customizer-button"
               type="button"
               onClick={onOpenThemeCustomizer}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold border shadow-2xs hover:scale-105 active:scale-95 transition-all cursor-pointer"
+              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-semibold border shadow-2xs hover:scale-105 active:scale-95 transition-all cursor-pointer shrink-0"
               style={{
                 borderColor: currentTheme.borderColor,
                 backgroundColor: currentTheme.bgSurface,
@@ -132,7 +144,7 @@ export const Navbar: React.FC<NavbarProps> = ({
               title="Personalize Themes, Colors & Multiple AI Companion Voices"
             >
               <Palette className="w-4 h-4" style={{ color: ACCENT_COLORS[accentColorId].hex }} />
-              <span>{currentTheme.name}</span>
+              <span className="max-w-[90px] truncate">{currentTheme.name}</span>
             </button>
           )}
 
@@ -142,142 +154,140 @@ export const Navbar: React.FC<NavbarProps> = ({
               id="open-jarvis-voice-button"
               type="button"
               onClick={onOpenJarvisVoice}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold border shadow-2xs transition-all active:scale-95 cursor-pointer"
+              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-bold border shadow-2xs transition-all active:scale-95 cursor-pointer shrink-0"
               style={{
                 borderColor: currentTheme.borderColor,
                 backgroundColor: `${ACCENT_COLORS[accentColorId].hex}15`,
                 color: currentTheme.textMain,
               }}
-              title={`Launch ${activeVoice.name} Voice Mode (Low-Literacy & Hands-Free)`}
+              title={`Launch ${activeVoice.name} Voice Mode`}
             >
               <MessageSquareQuote className="w-4 h-4 text-amber-500" />
-              <span>{activeVoice.name} Mode</span>
+              <span className="max-w-[90px] truncate">{activeVoice.name}</span>
             </button>
           )}
 
-          {/* Reflections World Map Button */}
-          {onOpenReflectionsMap && (
+          {/* Consolidated Tools & Security Dropdown for Laptops */}
+          <div className="relative" ref={toolsMenuRef}>
             <button
-              id="open-reflections-map-header-button"
+              id="navbar-laptop-tools-menu-button"
               type="button"
-              onClick={onOpenReflectionsMap}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold border shadow-2xs hover:scale-105 active:scale-95 transition-all cursor-pointer"
+              onClick={() => setIsToolsMenuOpen(!isToolsMenuOpen)}
+              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-semibold border shadow-2xs hover:opacity-90 active:scale-95 transition-all cursor-pointer shrink-0"
               style={{
                 borderColor: currentTheme.borderColor,
                 backgroundColor: currentTheme.bgSurface,
                 color: currentTheme.textMain,
               }}
-              title="Explore Reflections across the globe on Google Maps"
+              title="Security, Insights, Passkeys & Admin Tools"
             >
-              <MapPin className="w-4 h-4 text-emerald-500" />
-              <span>World Map</span>
+              <Shield className="w-4 h-4 text-indigo-500" />
+              <span>Tools</span>
+              <ChevronDown className={`w-3.5 h-3.5 opacity-60 transition-transform ${isToolsMenuOpen ? 'rotate-180' : ''}`} />
             </button>
-          )}
 
-          {/* Mood Insights (D3.js) Button */}
-          {user && onOpenMoodInsights && (
-            <button
-              id="open-mood-insights-button"
-              type="button"
-              onClick={onOpenMoodInsights}
-              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-semibold border transition-colors shadow-2xs cursor-pointer"
-              style={{
-                borderColor: currentTheme.borderColor,
-                backgroundColor: currentTheme.bgSurface,
-                color: currentTheme.textMain,
-              }}
-              title="Mood Insights: Local Enclave D3.js Visualization (Last 30 Days)"
-            >
-              <BarChart3 className="w-4 h-4 text-amber-500" />
-              <span>Insights</span>
-            </button>
-          )}
+            {isToolsMenuOpen && (
+              <div
+                className="absolute left-0 mt-2 w-64 rounded-2xl border shadow-xl p-2 z-50 animate-fade-in text-xs space-y-1"
+                style={{
+                  backgroundColor: currentTheme.bgSurface,
+                  borderColor: currentTheme.borderColor,
+                  color: currentTheme.textMain,
+                }}
+              >
+                {user && onOpenMoodInsights && (
+                  <button
+                    type="button"
+                    onClick={() => { setIsToolsMenuOpen(false); onOpenMoodInsights(); }}
+                    className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl hover:bg-stone-100 dark:hover:bg-stone-800/80 transition-colors text-left cursor-pointer"
+                  >
+                    <BarChart3 className="w-4 h-4 text-amber-500 shrink-0" />
+                    <div>
+                      <div className="font-semibold">Mood Insights</div>
+                      <div className="text-[10px] opacity-70" style={{ color: currentTheme.textMuted }}>D3.js visualization (30 days)</div>
+                    </div>
+                  </button>
+                )}
 
-          {/* Voice Command Guide Button */}
-          {user && onOpenVoiceGuide && (
-            <button
-              id="open-voice-guide-button"
-              type="button"
-              onClick={onOpenVoiceGuide}
-              className="px-2.5 py-1.5 rounded-xl text-xs font-medium border transition-colors cursor-pointer"
-              style={{
-                borderColor: currentTheme.borderColor,
-                backgroundColor: currentTheme.bgSurface,
-                color: currentTheme.textMain,
-              }}
-              title="Voice Command Guide & Natural Language Reference"
-            >
-              <HelpCircle className="w-4 h-4 text-stone-400" />
-              <span className="ml-1 text-xs">Voice Guide</span>
-            </button>
-          )}
+                {user && onOpenPasskeyModal && (
+                  <button
+                    type="button"
+                    onClick={() => { setIsToolsMenuOpen(false); onOpenPasskeyModal(); }}
+                    className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl hover:bg-stone-100 dark:hover:bg-stone-800/80 transition-colors text-left cursor-pointer"
+                  >
+                    <Fingerprint className="w-4 h-4 text-amber-500 shrink-0" />
+                    <div>
+                      <div className="font-semibold">Passkey Vault</div>
+                      <div className="text-[10px] opacity-70" style={{ color: currentTheme.textMuted }}>FIDO2 WebAuthn keys</div>
+                    </div>
+                  </button>
+                )}
 
-          {/* FIDO2 Passkeys Vault */}
-          {user && onOpenPasskeyModal && (
-            <button
-              id="open-passkey-vault-button"
-              type="button"
-              onClick={onOpenPasskeyModal}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold border transition-colors cursor-pointer shadow-2xs"
-              style={{
-                borderColor: currentTheme.borderColor,
-                backgroundColor: currentTheme.bgSurface,
-                color: currentTheme.textMain,
-              }}
-              title="FIDO2 Passkeys & Plausible Deniability Vault"
-            >
-              <Fingerprint className="w-4 h-4 text-amber-500" />
-              <span>Passkey Vault</span>
-            </button>
-          )}
+                {user && onOpenVoiceGuide && (
+                  <button
+                    type="button"
+                    onClick={() => { setIsToolsMenuOpen(false); onOpenVoiceGuide(); }}
+                    className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl hover:bg-stone-100 dark:hover:bg-stone-800/80 transition-colors text-left cursor-pointer"
+                  >
+                    <HelpCircle className="w-4 h-4 text-stone-400 shrink-0" />
+                    <div>
+                      <div className="font-semibold">Voice Guide</div>
+                      <div className="text-[10px] opacity-70" style={{ color: currentTheme.textMuted }}>Commands & prompt reference</div>
+                    </div>
+                  </button>
+                )}
 
-          {/* Safe Mode / Crisis Button */}
-          {user && onTriggerSafeMode && (
-            <button
-              id="navbar-safe-mode-button"
-              type="button"
-              onClick={onTriggerSafeMode}
-              className="p-1.5 rounded-xl text-xs font-semibold text-rose-600 bg-rose-50 hover:bg-rose-100 border border-rose-200 transition-colors cursor-pointer"
-              title="Safe Mode Assistance & Crisis Lifeline"
-            >
-              <HeartHandshake className="w-4 h-4" />
-            </button>
-          )}
+                {onOpenSecurityModal && (
+                  <button
+                    type="button"
+                    onClick={() => { setIsToolsMenuOpen(false); onOpenSecurityModal(); }}
+                    className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl hover:bg-stone-100 dark:hover:bg-stone-800/80 transition-colors text-left cursor-pointer"
+                  >
+                    <ShieldCheck className="w-4 h-4 text-emerald-600 shrink-0" />
+                    <div>
+                      <div className="font-semibold">Zero-Trust Enclave</div>
+                      <div className="text-[10px] opacity-70" style={{ color: currentTheme.textMuted }}>Client-side AES-256-GCM specs</div>
+                    </div>
+                  </button>
+                )}
 
-          {/* Admin Dashboard (RBAC & Notifications) */}
-          {onOpenAdminDashboard && (
-            <button
-              id="navbar-admin-dashboard-button"
-              type="button"
-              onClick={onOpenAdminDashboard}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold text-indigo-900 bg-indigo-50 border border-indigo-200 hover:bg-indigo-100 transition-colors shadow-2xs cursor-pointer"
-              title="Admin Dashboard: Role-Based Access Control, Webhooks & Telemetry"
-            >
-              <Shield className="w-4 h-4 text-indigo-600" />
-              <span>Admin</span>
-              {isAdmin && (
-                <span className="text-[10px] bg-indigo-200/80 text-indigo-900 px-1 py-0.5 rounded font-mono font-bold leading-none">
-                  RBAC
-                </span>
-              )}
-            </button>
-          )}
+                {user && onTriggerSafeMode && (
+                  <button
+                    type="button"
+                    onClick={() => { setIsToolsMenuOpen(false); onTriggerSafeMode(); }}
+                    className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl hover:bg-rose-50 dark:hover:bg-rose-950/40 text-rose-600 transition-colors text-left cursor-pointer border border-rose-100 dark:border-rose-900/40"
+                  >
+                    <HeartHandshake className="w-4 h-4 shrink-0" />
+                    <div>
+                      <div className="font-semibold">Safe Mode Lifeline</div>
+                      <div className="text-[10px] opacity-70">Immediate crisis resources</div>
+                    </div>
+                  </button>
+                )}
 
-          {/* Security Architecture Transparency */}
-          <button
-            id="security-info-button"
-            type="button"
-            onClick={onOpenSecurityModal}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium text-emerald-800 bg-emerald-50 border border-emerald-200 hover:bg-emerald-100 transition-colors cursor-pointer"
-            title="Zero-Knowledge Security Architecture"
-          >
-            <ShieldCheck className="w-4 h-4 text-emerald-600" />
-            <span>Zero-Trust</span>
-          </button>
+                {onOpenAdminDashboard && (
+                  <button
+                    type="button"
+                    onClick={() => { setIsToolsMenuOpen(false); onOpenAdminDashboard(); }}
+                    className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl hover:bg-indigo-50 dark:hover:bg-indigo-950/40 text-indigo-700 dark:text-indigo-300 transition-colors text-left cursor-pointer"
+                  >
+                    <Shield className="w-4 h-4 text-indigo-600 shrink-0" />
+                    <div className="flex-1">
+                      <div className="flex items-center justify-between">
+                        <span className="font-semibold">Admin Panel</span>
+                        <span className="text-[9px] bg-indigo-100 dark:bg-indigo-900/60 px-1 py-0.5 rounded font-mono font-bold">RBAC</span>
+                      </div>
+                      <div className="text-[10px] opacity-70">Audit logs & webhooks</div>
+                    </div>
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
         </div>
 
-        {/* Global Right-Side Controls: Always-Visible User Profile & Sign Out Button */}
-        <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+        {/* Global Right-Side Controls: Always-Visible User Profile & Sign Out Button (Shifted left from edge) */}
+        <div className="flex items-center gap-1.5 sm:gap-2 shrink-0 mr-1 sm:mr-3 lg:mr-6">
           {/* Quick Voice Check-in on tablet only (on phone it is in 3-dots menu) */}
           {user && onOpenVoiceCheckIn && (
             <button
@@ -290,24 +300,6 @@ export const Navbar: React.FC<NavbarProps> = ({
             >
               <Mic className="w-4 h-4 animate-pulse" />
               <span>Voice</span>
-            </button>
-          )}
-
-          {/* Quick World Map on tablet */}
-          {onOpenReflectionsMap && (
-            <button
-              id="tablet-reflections-map-quick"
-              type="button"
-              onClick={onOpenReflectionsMap}
-              className="hidden md:flex xl:hidden p-2 rounded-xl border shadow-2xs active:scale-95 transition-all cursor-pointer shrink-0"
-              style={{
-                borderColor: currentTheme.borderColor,
-                backgroundColor: currentTheme.bgSurface,
-                color: currentTheme.textMain,
-              }}
-              title="Explore Reflections World Map"
-            >
-              <MapPin className="w-4 h-4 text-emerald-500" />
             </button>
           )}
 
@@ -345,8 +337,9 @@ export const Navbar: React.FC<NavbarProps> = ({
           </button>
 
           {/* User Profile & Direct Sign Out Button - ALWAYS VISIBLE ON ALL SCREENS */}
+          {/* User Profile & Direct Sign Out Button - Shifted leftward from edge */}
           {(user || isGuest) ? (
-            <div className="flex items-center gap-1.5 sm:gap-2 pl-1.5 sm:pl-2 border-l" style={{ borderColor: currentTheme.borderColor }}>
+            <div className="flex items-center gap-2 sm:gap-3 pl-2 sm:pl-3 border-l shrink-0" style={{ borderColor: currentTheme.borderColor }}>
               {isGuest || !user ? (
                 <>
                   <span className="text-[11px] px-2 py-0.5 rounded-full font-semibold bg-amber-100 text-amber-900 border border-amber-300 hidden md:inline-block">
@@ -357,7 +350,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                       id="navbar-google-sso-button"
                       type="button"
                       onClick={onSignIn}
-                      className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-semibold text-white bg-stone-900 hover:bg-stone-800 transition-all shadow-xs cursor-pointer active:scale-95 shrink-0"
+                      className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-xl text-xs font-semibold text-white bg-stone-900 hover:bg-stone-800 transition-all shadow-xs cursor-pointer active:scale-95 shrink-0"
                       title="Connect Google Single Sign-On to persist in Cloud Firestore"
                     >
                       <svg className="w-3.5 h-3.5 shrink-0" viewBox="0 0 24 24">
@@ -373,7 +366,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                     id="sign-out-button"
                     type="button"
                     onClick={onSignOut}
-                    className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-xl text-xs font-bold text-rose-700 dark:text-rose-300 bg-rose-50 dark:bg-rose-950/40 hover:bg-rose-100 dark:hover:bg-rose-900/60 border border-rose-200 dark:border-rose-800 transition-all cursor-pointer shadow-2xs active:scale-95 shrink-0"
+                    className="flex items-center gap-1.5 px-3 sm:px-3.5 py-1.5 rounded-xl text-xs font-bold text-rose-700 dark:text-rose-300 bg-rose-50 dark:bg-rose-950/40 hover:bg-rose-100 dark:hover:bg-rose-900/60 border border-rose-200 dark:border-rose-800 transition-all cursor-pointer shadow-2xs active:scale-95 shrink-0 ml-1 sm:ml-2"
                     title="Sign out and reset session"
                   >
                     <LogOut className="w-3.5 h-3.5 shrink-0" />
@@ -388,10 +381,10 @@ export const Navbar: React.FC<NavbarProps> = ({
                         src={user.photoURL}
                         alt={user.displayName || 'Google Account'}
                         referrerPolicy="no-referrer"
-                        className="w-7 h-7 rounded-full border border-stone-300 shadow-2xs object-cover shrink-0"
+                        className="w-7 h-7 sm:w-8 sm:h-8 rounded-full border border-stone-300 shadow-2xs object-cover shrink-0"
                       />
                     ) : (
-                      <div className="w-7 h-7 rounded-full bg-stone-900 text-white font-bold text-xs flex items-center justify-center shadow-2xs shrink-0">
+                      <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-stone-900 text-white font-bold text-xs flex items-center justify-center shadow-2xs shrink-0">
                         {user.displayName ? user.displayName[0].toUpperCase() : user.email ? user.email[0].toUpperCase() : 'G'}
                       </div>
                     )}
@@ -406,7 +399,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                     id="sign-out-button"
                     type="button"
                     onClick={onSignOut}
-                    className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-xl text-xs font-bold text-rose-700 dark:text-rose-300 bg-rose-50 dark:bg-rose-950/40 hover:bg-rose-100 dark:hover:bg-rose-900/60 border border-rose-200 dark:border-rose-800 transition-all cursor-pointer shadow-2xs active:scale-95 shrink-0"
+                    className="flex items-center gap-1.5 px-3 sm:px-3.5 py-1.5 rounded-xl text-xs font-bold text-rose-700 dark:text-rose-300 bg-rose-50 dark:bg-rose-950/40 hover:bg-rose-100 dark:hover:bg-rose-900/60 border border-rose-200 dark:border-rose-800 transition-all cursor-pointer shadow-2xs active:scale-95 shrink-0 ml-1 sm:ml-2"
                     title="Lock session & sign out from Firebase"
                   >
                     <LogOut className="w-3.5 h-3.5 shrink-0" />
@@ -594,30 +587,6 @@ export const Navbar: React.FC<NavbarProps> = ({
                         <span className="text-[10px] px-2 py-0.5 rounded-full font-semibold border" style={{ borderColor: currentTheme.borderColor }}>
                           Switch
                         </span>
-                      </button>
-                    )}
-
-                    {onOpenReflectionsMap && (
-                      <button
-                        id="mobile-menu-reflections-map-button"
-                        type="button"
-                        onClick={() => {
-                          setIsMobileMenuOpen(false);
-                          onOpenReflectionsMap();
-                        }}
-                        className="w-full flex items-center justify-between p-3 rounded-xl border hover:opacity-90 transition-all text-left"
-                        style={{ borderColor: currentTheme.borderColor }}
-                      >
-                        <div className="flex items-center gap-3">
-                          <MapPin className="w-5 h-5 text-emerald-500" />
-                          <div>
-                            <div className="text-xs font-bold">Reflections World Map</div>
-                            <div className="text-[11px]" style={{ color: currentTheme.textMuted }}>
-                              Google Maps Platform sanctuary visualizer
-                            </div>
-                          </div>
-                        </div>
-                        <ChevronRight className="w-4 h-4 opacity-50" />
                       </button>
                     )}
 

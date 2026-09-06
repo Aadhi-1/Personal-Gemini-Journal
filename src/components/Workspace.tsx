@@ -756,19 +756,19 @@ export const Workspace: React.FC<WorkspaceProps> = ({
               {isDesktopSidebarCollapsed ? (
                 <>
                   <PanelLeftOpen className="w-3.5 h-3.5 text-amber-600" />
-                  <span className="hidden xl:inline text-[11px] font-medium">Show Sidebar</span>
+                  <span className="hidden 2xl:inline text-[11px] font-medium whitespace-nowrap">Show Sidebar</span>
                 </>
               ) : (
                 <>
                   <Maximize2 className="w-3.5 h-3.5 text-stone-500" />
-                  <span className="hidden xl:inline text-[11px] font-medium">Full Screen</span>
+                  <span className="hidden 2xl:inline text-[11px] font-medium whitespace-nowrap">Full Screen</span>
                 </>
               )}
             </button>
           )}
 
           {/* Title Editor */}
-          <div className="flex-1 flex items-center min-w-0">
+          <div className="flex-1 flex items-center min-w-[120px]">
             {entry.mood && (
               <span
                 id="entry-title-mood-emoji"
@@ -851,7 +851,7 @@ export const Workspace: React.FC<WorkspaceProps> = ({
                 title="Toggle Pomodoro reflection timer"
               >
                 <Timer className="w-3.5 h-3.5 text-amber-600" />
-                <span>Timer</span>
+                <span className="hidden 2xl:inline">Timer</span>
               </button>
 
               {/* Multi-Voice Persona Selector Dropdown */}
@@ -952,7 +952,7 @@ export const Workspace: React.FC<WorkspaceProps> = ({
                 title="Watch funny laughing videos to soothe and cheer up your mood"
               >
                 <span className="text-sm leading-none">😂</span>
-                <span className="hidden sm:inline">Cheer Up</span>
+                <span className="hidden 2xl:inline">Cheer Up</span>
               </button>
             </div>
 
